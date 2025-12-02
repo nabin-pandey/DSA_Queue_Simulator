@@ -43,26 +43,23 @@ public class VehicleQueue {
 
 
 
-    public void dequeue(){
+    public String dequeue(){
 
         if(isEmpty()){
             System.out.println("Vehicle Queue is Empty");
-            return ;
+            return null;
         }
 
-        String removedID = return this.front.getVehicleId() ;
+        String removedID =  this.front.getVehicleId() ;
         this.front = this.front.getNext() ;
         this.size-- ;
 
         System.out.println("vehicle : " + removedID + " dequeued : " + this.size);
+        return removedID;
+
     }
 
     public boolean isEmpty(){
         return this.front == null ;
     }
-
-
-
-
-
 }
