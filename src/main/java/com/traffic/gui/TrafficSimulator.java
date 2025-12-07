@@ -40,6 +40,13 @@ public class TrafficSimulator extends Application {
     private Circle lightD;
 
 
+    //Lane Objects
+    private Lane laneA;
+    private Lane laneB;
+    private Lane laneC ;
+    private Lane laneD ;
+
+
     private LaneEntry laneEntryA;
     private LaneEntry laneEntryB;
     private LaneEntry laneEntryC;
@@ -84,12 +91,13 @@ public class TrafficSimulator extends Application {
         entries.add(laneEntryC);
         entries.add(laneEntryD);
 
-        scheduler = new TrafficScheduler(entries) ;
+        trafficScheduler = new TrafficScheduler(entries) ;
 
         Pane root = new Pane();
         root.setPrefSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-        double Cnetre
+        double Circle ;
+
 
     }
 }

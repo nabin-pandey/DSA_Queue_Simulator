@@ -31,7 +31,7 @@ public class Lane {
      lane1.enqueue(vehicleId);
     }
 
-    //Dequeuing from Incoming Queue , Traffic Light : Green
+    //Dequeue from Incoming Queue, Traffic Light: Green
     public String dequeueFromIncoming(){
         return lane1.dequeue();
     }
@@ -46,7 +46,7 @@ public class Lane {
     public int prioritySize(){ return lane2.getSize(); }
     public int leftOnlySize(){ return lane3.getSize(); }
 
-    //Total Size of the Vehicle that are in the queue.
+    //Total Size of the Vehicle that is in the queue.
     public int totalSIze(){ return incomingSize() + prioritySize() + leftOnlySize(); }
 
     public boolean incomingEmpty(){ return lane1.isEmpty(); }
