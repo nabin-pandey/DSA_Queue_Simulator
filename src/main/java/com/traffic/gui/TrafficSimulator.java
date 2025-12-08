@@ -55,10 +55,10 @@ public class TrafficSimulator extends Application {
     private TrafficScheduler trafficScheduler;
 
     //Displaying counts
-    private Text counta;
-    private Text countb;
-    private Text countc;
-    private Text countd;
+    private Text countA;
+    private Text countB;
+    private Text countC;
+    private Text countD;
 
     //Generate  random numbers
     private final Random  random_generator = new Random();
@@ -96,7 +96,42 @@ public class TrafficSimulator extends Application {
         Pane root = new Pane();
         root.setPrefSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-        double Circle ;
+        double centerX = WINDOW_WIDTH / 2.0 ;
+        double centerY = WINDOW_HEIGHT / 2.0 ;
+
+        //Road and Junction
+        Rectangle junction = new Rectangle(JUNCTION_SIZE, JUNCTION_SIZE);
+        junction.setX(centerX - JUNCTION_SIZE / 2.0);
+        junction.setY(centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH);
+        junction.setFill(Color.DARKGRAY);
+        root.getChildren().add(junction) ;
+
+
+        Rectangle roadA = new Rectangle(JUNCTION_SIZE, ROAD_LENGTH);
+        roadA.setX(centerX - JUNCTION_SIZE / 2.0);
+        roadA.setY(centerY - ROAD_LENGTH / 2.0);
+        roadA.setFill(Color.GRAY);
+        root.getChildren().add(roadA) ;
+
+        Rectangle roadB = new Rectangle(JUNCTION_SIZE, ROAD_LENGTH);
+        roadA.setX(centerX - JUNCTION_SIZE / 2.0);
+        roadA.setY(centerY - ROAD_LENGTH / 2.0);
+        roadA.setFill(Color.GRAY);
+        root.getChildren().add(roadB) ;
+
+        Rectangle roadC = new Rectangle(JUNCTION_SIZE, ROAD_LENGTH);
+        roadA.setX(centerX - JUNCTION_SIZE / 2.0);
+        roadA.setY(centerY - ROAD_LENGTH / 2.0);
+        roadA.setFill(Color.GRAY);
+        root.getChildren().add(roadA) ;
+
+        Rectangle roadD = new Rectangle(JUNCTION_SIZE, ROAD_LENGTH);
+        roadA.setX(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH);
+        roadA.setY(centerY - ROAD_LENGTH / 2.0);
+        roadA.setFill(Color.GRAY);
+        root.getChildren().add(roadD) ;
+
+
 
 
     }
