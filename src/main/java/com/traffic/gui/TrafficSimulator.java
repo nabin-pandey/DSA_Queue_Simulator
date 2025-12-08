@@ -19,6 +19,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -131,7 +132,19 @@ public class TrafficSimulator extends Application {
         roadA.setFill(Color.GRAY);
         root.getChildren().add(roadD) ;
 
+        //Traffic Lights
+        lightA = new Circle(centerX + JUNCTION_SIZE / 2.0 - LIGHT_SIZE, centerY - JUNCTION_SIZE / 2.0 - 5, LIGHT_SIZE, Color.RED);
+        lightB = new Circle(centerX - JUNCTION_SIZE / 2.0 + LIGHT_SIZE, centerY + JUNCTION_SIZE / 2.0 + 5, LIGHT_SIZE, Color.RED);
+        lightC = new Circle(centerX + JUNCTION_SIZE / 2.0 + 5, centerY + JUNCTION_SIZE / 2.0 - LIGHT_SIZE, LIGHT_SIZE, Color.RED);
+        lightD = new Circle(centerX - JUNCTION_SIZE / 2.0 - 5, centerY - JUNCTION_SIZE / 2.0 + LIGHT_SIZE, LIGHT_SIZE, Color.RED);
+        root.getChildren().addAll(lightA, lightB, lightC, lightD);
 
+        //Labels
+            Text LabelA = new Text(centerX - 12 , centerY - ROAD_LENGTH - LANE_WIDTH / 2.0 + 8 , "Road A");
+            Text LabelB = new Text(centerX - 12 , centerY + ROAD_LENGTH + LANE_WIDTH, "Road B");
+            Text LabelC = new Text(centerX + ROAD_LENGTH + LANE_WIDTH / 2.0 - 10 , centerY + 4, "Road C");
+            Text LabelD = new Text(centerX - ROAD_LENGTH - LANE_WIDTH + 6 , centerY + 4, "Road D");
+            root.getChildren().addAll(LabelA, LabelB, LabelC, LabelD);
 
 
     }
