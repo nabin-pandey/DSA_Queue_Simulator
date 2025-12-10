@@ -146,6 +146,37 @@ public class TrafficSimulator extends Application {
             Text LabelD = new Text(centerX - ROAD_LENGTH - LANE_WIDTH + 6 , centerY + 4, "Road D");
             root.getChildren().addAll(LabelA, LabelB, LabelC, LabelD);
 
+        //CountA
+        countA = new Text(centerX - LANE_WIDTH / 2.0 , centerY - JUNCTION_SIZE/ 2.0 - ROAD_LENGTH + 24 , "Cars: 0");
+        countB = new Text(centerX - LANE_WIDTH / 2.0 , centerY+ JUNCTION_SIZE / 20.0 + ROAD_LENGTH - 6, "Cars : 0");
+        countC = new Text(centerX + JUNCTION_SIZE/ 2.0 + ROAD_LENGTH - 60 , centerY + LANE_WIDTH /2.0 , "Cars : 0" );
+        countD = new Text(centerX - JUNCTION_SIZE/ 2.0 - ROAD_LENGTH + 10 , centerY + LANE_WIDTH /2.0 , "Cars : 0" );
+        root.getChildren().addAll(countA, countB, countC, countD);
 
+        //Simple Button
+        Button startButton = new Button("Start");
+        startButton.setLayoutX(20);
+        startButton.setLayoutY(WINDOW_HEIGHT -  60);
+        root.getChildren().add(startButton);
+
+        startButton.setOnAction(e ->{
+            startButton.setDisable(true);
+            startSimulationLoop() ;
+        });
+
+
+        Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
+        primaryStage.setTitle("DSA Queue Simulator");
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+
+    private void startSimulationLoop(){
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            generateRandomTraffic();
+
+
+
+        }));
     }
 }
