@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+//Debug
+import java.util.logging.* ;
 
 public class TrafficSimulator extends Application {
 
@@ -92,6 +94,7 @@ public class TrafficSimulator extends Application {
         entries.add(laneEntryC);
         entries.add(laneEntryD);
 
+        //Call Scheduler from TrafficScheduler
         trafficScheduler = new TrafficScheduler(entries) ;
 
         Pane root = new Pane();
@@ -173,10 +176,55 @@ public class TrafficSimulator extends Application {
 
     private void startSimulationLoop(){
         Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+
+            //Use to generate random numbers of cars in each lane
             generateRandomTraffic();
 
+            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.totalSIze());
+            trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.totalSIze());
+            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.totalSIze());
+            trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.totalSIze());
+
+            String next = trafficScheduler.getNextLaneToServe() != null ? trafficScheduler.serverAndRotateLane() : null ;
+
+            if(next != null){
+                //Color are all in Red
+                setLightColor(lightA , Color.RED);
+
+            }
 
 
         }));
+        //Function definition is remaining will do it later on
+                updateCount();
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
     }
+
+    public void setLightColor(Circle light , Color color){
+        if(light == null ) return ;
+        Platform.runLater(() -> light.setFill(color));
+    }
+
+   private void generateRandomTraffic(){
+       if(random_generator.nextDouble() < 0.35) laneA.enqueueToLane("A - "+ System.currentTimeMillis()%1000);
+
+       if(random_generator.nextDouble() < 0.35) laneB.enqueueToLane("B - " +System.currentTimeMillis()%1000);
+       if(random_generator.nextDouble() < 0.35) laneC.enqueueToLane("C - " +System.currentTimeMillis()%1000);
+       if(random_generator.nextDouble() < 0.35) laneD.enqueueToLane("D - " +System.currentTimeMillis()%1000);
+
+       //Yo chai AL2 ko priority check garney
+       if(random_generator.nextDouble()  < 0.12) laneA.enqueueToLane(2, " AL-2 : " +System.currentTimeMillis()%1000);
+
+   }
+
+   //Incoming basis ma update huncha
+   private void updateCount(){
+        Platform.runLater(() ->{
+            countA.setText("Cars : " + laneA.incomingSize() + "AL-2:"+ laneA.prioritySize());
+            countB.setText("Cars : " + laneB.incomingSize());
+            countC.setText("Cars : " + laneC.incomingSize());
+            countD.setText("Cars : " + laneD.incomingSize());
+        });
+   }
 }
