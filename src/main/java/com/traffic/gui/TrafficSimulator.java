@@ -4,7 +4,6 @@ package com.traffic.gui;
 import com.traffic.core.Lane;
 import com.traffic.core.LaneEntry;
 import com.traffic.core.TrafficScheduler;
-import com.traffic.core.VehicleQueue;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -19,13 +18,12 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 //Debug
-import java.util.logging.* ;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TrafficSimulator extends Application {
 
@@ -127,7 +125,7 @@ public class TrafficSimulator extends Application {
         roadA.setX(centerX - JUNCTION_SIZE / 2.0);
         roadA.setY(centerY - ROAD_LENGTH / 2.0);
         roadA.setFill(Color.GRAY);
-        root.getChildren().add(roadA) ;
+        root.getChildren().add(roadC) ;
 
         Rectangle roadD = new Rectangle(JUNCTION_SIZE, ROAD_LENGTH);
         roadA.setX(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH);
@@ -190,9 +188,55 @@ public class TrafficSimulator extends Application {
             if(next != null){
                 //Color are all in Red
                 setLightColor(lightA , Color.RED);
+                setLightColor(lightB , Color.RED);
+                setLightColor(lightC , Color.RED);
+                setLightColor(lightD , Color.RED);
 
-            }
+                AtomicReference<Circle> currentLight = new AtomicReference<>();
+                Lane currentLane = null ;
 
+                switch (next){
+                    case"A" : currentLight.set(lightA); currentLane = laneA ;
+                    break ;
+                    case " B" : currentLight.set(lightB); currentLane = laneB ;
+                break;
+                    case"C" : currentLight.set(lightC); currentLane = laneC ;
+                    break ;
+
+                    case " D": currentLight.set(lightD); currentLane = laneD ;
+                    default : break ;
+
+                }
+
+                if(currentLight.get() != null && currentLane != null ){
+                 setLightColor(currentLight.get(), Color.GREEN);
+
+                 int sumIncoming = laneA.incomingSize() + laneB.incomingSize() + laneC.incomingSize() + laneD.incomingSize();
+                 int n = 4 ;
+                int v = (int) Math.round((double) sumIncoming / n) ;
+                if(v  <1) v = 1;
+
+                if("A".equals(next) && laneA.prioritySize() > 10 ){
+                    v = Math.max( v , laneA.prioritySize());
+                }
+                 for (int i = 0 ; i < v ; i++){
+                        String served = currentLane.dequeueFromIncoming();
+                        if(served != null) System.out.println("Car Served ; " +served);
+
+                 }
+
+                 Timeline t = new Timeline(new KeyFrame((Duration.millis(700)) , e2 -> {
+                     setLightColor(currentLight.get(), Color.YELLOW);
+                     new Timeline(new KeyFrame(Duration.millis(1000) , e3 -> {
+                         setLightColor(currentLight.get(), Color.RED);
+                     })).play();
+                 })) ;
+                 t.play();
+
+
+
+                }
+           }
 
         }));
         //Function definition is remaining will do it later on
