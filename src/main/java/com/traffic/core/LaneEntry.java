@@ -36,4 +36,8 @@ public class LaneEntry implements Comparable<LaneEntry> {
     public int hashCode() {
         return roadId.hashCode();
     }
+
+    public String trim() {
+        return roadId.substring(0, 3);
+    }
 }
