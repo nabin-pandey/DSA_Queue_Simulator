@@ -1,4 +1,4 @@
-//Second wala
+
 
 package com.traffic.gui;
 
@@ -129,6 +129,9 @@ public class TrafficSimulator extends Application {
         background.setFill(Color.web("#f3f3f3"));
         root.getChildren().add(background);
 
+
+        root.getChildren().add(simulationPane);
+
         // grass shoulders (corners)
         Rectangle grassTopLeft = makeGrass(0, 0, centerX - JUNCTION_SIZE / 2 - 60, centerY - JUNCTION_SIZE / 2 - 60);
         Rectangle grassTopRight = makeGrass(centerX + JUNCTION_SIZE / 2 + 60, 0,
@@ -188,6 +191,9 @@ public class TrafficSimulator extends Application {
         drawLaneMarkingsForHorizontalRoad(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY - roadThickness / 2.0,
                 ROAD_LENGTH + JUNCTION_SIZE / 2.0, roadThickness);
 
+        drawAllCrossWalks();
+
+
         // Traffic Lights - place them at corners near junction for each road (use your variable names)
         lightA = new Circle(centerX -  (LANE_WIDTH) / 2.0, centerY - JUNCTION_SIZE / 2.0 - 20, LIGHT_SIZE, Color.RED);
         lightB = new Circle(centerX + (LANE_WIDTH) / 2.0, centerY + JUNCTION_SIZE / 2.0 + 20, LIGHT_SIZE, Color.RED);
@@ -231,9 +237,7 @@ public class TrafficSimulator extends Application {
             l.setStroke(Color.web("#eeeeee"));
             root.getChildren().add(l);
         }
-        // add small crosswalks at junction edge
-        drawCrosswalkVertical(x, y + height - (JUNCTION_SIZE / 2.0));
-        drawCrosswalkVertical(x, y + (JUNCTION_SIZE / 2.0) - 10); // top of junction for bottom road
+
     }
 
     private void drawLaneMarkingsForHorizontalRoad(double x, double y, double width, double height) {
@@ -246,30 +250,67 @@ public class TrafficSimulator extends Application {
             l.setStroke(Color.web("#eeeeee"));
             root.getChildren().add(l);
         }
-        drawCrosswalkHorizontal(x + width - (JUNCTION_SIZE / 2.0), y);
-        drawCrosswalkHorizontal(x + (JUNCTION_SIZE / 2.0) - 10, y);
     }
 
-    private void drawCrosswalkVertical(double x, double startY) {
-        // draw a few white rectangles
-        double step = 8;
-        for (int i = 0; i < 8; i++) {
-            Rectangle r = new Rectangle(10, 4);
-            r.setX(x - (LANE_WIDTH * 1.5) + 8);
-            r.setY(startY + i * (step + 2));
-            r.setFill(Color.WHITE);
-            root.getChildren().add(r);
+    private void drawAllCrossWalks(){
+        double roadWidth = LANE_WIDTH * 3 ;
+
+        double crosswalkAY = centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH - 12 ;
+        double crosswalkAX = centerX - roadWidth / 2.0  ;
+
+        drawCrosswalkHorizontalStripes(crosswalkAX, crosswalkAY, roadWidth);
+
+        double crosswalkBY = centerY + JUNCTION_SIZE / 2.0 + 12 ;
+        double crosswalkBX = centerX - roadWidth / 2.0 - 12 ;
+
+        drawCrosswalkHorizontalStripes(crosswalkBX , crosswalkBY , roadWidth);
+
+        double crosswalkCY = centerY + JUNCTION_SIZE / 2.0 + 12 ;
+        double crosswalkCX = centerX + roadWidth / 2.0 + 12 ;
+
+        drawCrosswalkVerticalStries(crosswalkCX, crosswalkCY, roadWidth);
+
+        double crosswalkDX = centerX - JUNCTION_SIZE / 2.0  - 12 ;
+        double crosswalkDY = centerY - roadWidth / 2.0;
+
+        drawCrosswalkVerticalStries(crosswalkDX, crosswalkDY , roadWidth);
+    }
+
+    private void drawCrosswalkVerticalStries(double x , double y , double roadHeight) {
+
+        double stripeWidth = 8;
+        double stripeHeight = 15 ;
+        double spacing = 5;
+
+        // Draw stripes across the full width of the road
+        int numStripes = (int) (roadHeight / (stripeHeight + spacing));
+
+        for (int i = 0; i < numStripes; i++) {
+            Rectangle stripe = new Rectangle(stripeWidth, stripeHeight);
+         stripe.setX(x);
+         stripe.setY(y  + i * (stripeWidth + spacing)) ;
+         stripe.setFill(Color.WHITE);
+            root.getChildren().add(stripe);
         }
     }
 
-    private void drawCrosswalkHorizontal(double startX, double y) {
-        double step = 8;
-        for (int i = 0; i < 8; i++) {
-            Rectangle r = new Rectangle(4, 10);
-            r.setX(startX - i * (step + 2));
-            r.setY(y - (LANE_WIDTH * 1.5) + 8);
-            r.setFill(Color.WHITE);
-            root.getChildren().add(r);
+    private void drawCrosswalkHorizontalStripes(double x, double y , double roadWidth) {
+
+
+        double stripeWidth = 15;
+        double stripeHeight = 8;
+        double spacing = 5;
+
+        int numStripes = (int) (roadWidth / (stripeWidth + spacing)) ;
+
+        for (int i = 0; i < numStripes; i++) {
+            Rectangle stripe = new Rectangle(stripeWidth, stripeHeight);
+            stripe.setX(x + i * (stripeWidth + spacing));
+            stripe.setY(y);
+            stripe.setFill(Color.WHITE);
+            stripe.setStroke(Color.web("#cccccc"));
+            stripe.setStrokeWidth(0.5);
+            root.getChildren().add(stripe);
         }
     }
 
@@ -394,7 +435,7 @@ public class TrafficSimulator extends Application {
 
     private void createAndAnimateCar(String laneName) {
 
-        // 1. Make car rectangle
+        // Make car rectangle
         Rectangle car = new Rectangle(20, 40, Color.BLUE);
         car.setArcWidth(8);
         car.setArcHeight(8);
@@ -404,7 +445,7 @@ public class TrafficSimulator extends Application {
         double endX = 0;
         double endY = 0;
 
-        // 2. Position based on lane
+        //  Position based on lane
         switch (laneName) {
             case "A":
                 startX = 250;
@@ -439,15 +480,17 @@ public class TrafficSimulator extends Application {
         car.setLayoutX(startX);
         car.setLayoutY(startY);
 
-        // 3. Add car node to the main Pane
+        //  Add car node to the main Pane
         simulationPane.getChildren().add(car);
 
-        // 4. Create movement animation
+        //  Create movement animation
         TranslateTransition tt = new TranslateTransition(Duration.seconds(3), car);
         tt.setToX(endX - startX);
         tt.setToY(endY - startY);
         tt.setOnFinished(e -> simulationPane.getChildren().remove(car));
         tt.play();
     }
+
+
 
 }
