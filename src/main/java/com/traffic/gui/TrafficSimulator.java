@@ -16,7 +16,6 @@ import javafx.scene.shape.*;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -66,6 +65,8 @@ public class TrafficSimulator extends Application {
     // center values for convenience
     private double centerX;
     private double centerY;
+
+    private Pane simulationPane = new Pane();
 
     public static void main(String[] args) {
         launch(args);
@@ -300,7 +301,7 @@ public class TrafficSimulator extends Application {
                         currentLight.set(lightA);
                         currentLane = laneA;
                         break;
-                    case " B":
+                    case "B":
                         currentLight.set(lightB);
                         currentLane = laneB;
                         break;
@@ -308,7 +309,7 @@ public class TrafficSimulator extends Application {
                         currentLight.set(lightC);
                         currentLane = laneC;
                         break;
-                    case " D":
+                    case "D":
                         currentLight.set(lightD);
                         currentLane = laneD;
                         break;
@@ -369,142 +370,7 @@ public class TrafficSimulator extends Application {
         Platform.runLater(() -> light.setFill(color));
     }
 
-    // Create a circle "car" at the lane start and animate along a path through the junction.
-    // This method uses the lane name and lane index to decide a path (straight/left/right).
-    private void createAndAnimateCar(String laneName) {
-        // determine lane spawn positions (three lanes per road)
-        double roadThickness = LANE_WIDTH * 3;
-        double laneThird = roadThickness / 3.0;
 
-        Circle car = new Circle(8, Color.web("#ff3333"));
-        car.setStroke(Color.web("#960000"));
-        car.setStrokeWidth(1.0);
-
-        Path path = new Path();
-
-        // We'll choose the path based on laneName; within each road we position by laneThird:
-        // For A: AL1 (left), AL2 (middle priority), AL3 (right) -> travel downward (to B)
-        // For B: BL1 (closest center), BL2 (middle), BL3 (outer) -> travel upward (to A)
-        // For C: CL1/CL2/CL3 -> travel left (to D)
-        // For D: DL1/DL2/DL3 -> travel right (to C)
-        // For simplicity we map spawn lane by alternating which lane index to use (rotate)
-        int laneIndex = (int) (Math.abs(System.currentTimeMillis()) % 3); // 0,1,2
-
-        if ("A".equals(laneName)) {
-            // spawn at top in corresponding lane
-            double spawnX = centerX - roadThickness / 2.0 + laneThird * (laneIndex + 0.5);
-            double spawnY = centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10;
-            car.setCenterX(spawnX);
-            car.setCenterY(spawnY);
-            root.getChildren().add(car);
-
-            // Decide movement: AL2 (index==1) is priority; we'll move straight,
-            // AL1 and AL3 sometimes turn left/right for variety (deterministic)
-            if (laneIndex == 1) {
-                // straight to bottom (through junction)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                LineTo l1 = new LineTo(spawnX, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 10);
-                path.getElements().addAll(m, l1);
-            } else if (laneIndex == 0) {
-                // left-turn (to D)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                // curve into left road
-                CubicCurveTo c = new CubicCurveTo(spawnX, centerY - 40, centerX - 120, centerY + 40, centerX - ROAD_LENGTH - JUNCTION_SIZE / 2.0 + 40, centerY);
-                path.getElements().addAll(m, c);
-            } else {
-                // right-turn (to C)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(spawnX, centerY - 40, centerX + 120, centerY + 40, centerX + ROAD_LENGTH + JUNCTION_SIZE / 2.0 - 40, centerY);
-                path.getElements().addAll(m, c);
-            }
-        } else if ("B".equals(laneName)) {
-            double spawnX = centerX - roadThickness / 2.0 + laneThird * (laneIndex + 0.5);
-            double spawnY = centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 10;
-            car.setCenterX(spawnX);
-            car.setCenterY(spawnY);
-            root.getChildren().add(car);
-
-            if (laneIndex == 1) {
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                LineTo l1 = new LineTo(spawnX, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10);
-                path.getElements().addAll(m, l1);
-            } else if (laneIndex == 0) {
-                // left turn (to C)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(spawnX, centerY + 40, centerX + 120, centerY - 40, centerX + ROAD_LENGTH + JUNCTION_SIZE / 2.0 - 40, centerY);
-                path.getElements().addAll(m, c);
-            } else {
-                // right turn (to D)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(spawnX, centerY + 40, centerX - 120, centerY - 40, centerX - ROAD_LENGTH - JUNCTION_SIZE / 2.0 + 40, centerY);
-                path.getElements().addAll(m, c);
-            }
-        } else if ("C".equals(laneName)) {
-            double spawnX = centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 10;
-            double spawnY = centerY - roadThickness / 2.0 + laneThird * (laneIndex + 0.5);
-            car.setCenterX(spawnX);
-            car.setCenterY(spawnY);
-            root.getChildren().add(car);
-
-            if (laneIndex == 1) {
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                LineTo l1 = new LineTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10, spawnY);
-                path.getElements().addAll(m, l1);
-            } else if (laneIndex == 0) {
-                // left turn (to A)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(centerX + 40, spawnY, centerX - 40, centerY - 120, centerX, centerY - ROAD_LENGTH - JUNCTION_SIZE / 2.0 + 40);
-                path.getElements().addAll(m, c);
-            } else {
-                // right turn (to B)
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(centerX + 40, spawnY, centerX - 40, centerY + 120, centerX, centerY + ROAD_LENGTH + JUNCTION_SIZE / 2.0 - 40);
-                path.getElements().addAll(m, c);
-            }
-        } else if ("D".equals(laneName)) {
-            double spawnX = centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10;
-            double spawnY = centerY - roadThickness / 2.0 + laneThird * (laneIndex + 0.5);
-            car.setCenterX(spawnX);
-            car.setCenterY(spawnY);
-            root.getChildren().add(car);
-
-            if (laneIndex == 1) {
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                LineTo l1 = new LineTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 10, spawnY);
-                path.getElements().addAll(m, l1);
-            } else if (laneIndex == 0) {
-                // left to B
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(centerX - 40, spawnY, centerX + 40, centerY + 120, centerX, centerY + ROAD_LENGTH + JUNCTION_SIZE / 2.0 - 40);
-                path.getElements().addAll(m, c);
-            } else {
-                // right to A
-                MoveTo m = new MoveTo(spawnX, spawnY);
-                CubicCurveTo c = new CubicCurveTo(centerX - 40, spawnY, centerX + 40, centerY - 120, centerX, centerY - ROAD_LENGTH - JUNCTION_SIZE / 2.0 + 40);
-                path.getElements().addAll(m, c);
-            }
-        } else {
-            // unknown lane - remove
-            return;
-        }
-
-        // Run the PathTransition
-        PathTransition pt = new PathTransition();
-        pt.setPath(path);
-        pt.setNode(car);
-
-        // base duration depends on path length; choose visually pleasing speed
-        pt.setDuration(Duration.seconds(3 + random_generator.nextDouble() * 2)); // 3-5 seconds
-        pt.setOrientation(PathTransition.OrientationType.NONE);
-        pt.setInterpolator(Interpolator.LINEAR);
-
-        pt.setOnFinished(evt -> {
-            // remove car from display when finished
-            root.getChildren().remove(car);
-        });
-
-        pt.play();
-    }
 
     private void updateCount() {
         Platform.runLater(() -> {
@@ -525,4 +391,63 @@ public class TrafficSimulator extends Application {
         // AL2 priority check (enqueue some priority vehicles)
         if (random_generator.nextDouble() < 0.12) laneA.enqueueToLane(2, " AL-2 : " + System.currentTimeMillis() % 1000);
     }
+
+    private void createAndAnimateCar(String laneName) {
+
+        // 1. Make car rectangle
+        Rectangle car = new Rectangle(20, 40, Color.BLUE);
+        car.setArcWidth(8);
+        car.setArcHeight(8);
+
+        double startX = 0;
+        double startY = 0;
+        double endX = 0;
+        double endY = 0;
+
+        // 2. Position based on lane
+        switch (laneName) {
+            case "A":
+                startX = 250;
+                startY = 600;     // bottom going upward
+                endX   = 250;
+                endY   = -100;
+                break;
+
+            case "B":
+                startX = 600;
+                startY = 250;     // right going left
+                endX   = -200;
+                endY   = 250;
+                break;
+
+            case "C":
+                startX = 250;
+                startY = -100;    // top going downward
+                endX   = 250;
+                endY   = 700;
+                break;
+
+            case "D":
+                startX = -100;
+                startY = 250;     // left going right
+                endX   = 700;
+                endY   = 250;
+                break;
+        }
+
+        // Set initial placement
+        car.setLayoutX(startX);
+        car.setLayoutY(startY);
+
+        // 3. Add car node to the main Pane
+        simulationPane.getChildren().add(car);
+
+        // 4. Create movement animation
+        TranslateTransition tt = new TranslateTransition(Duration.seconds(3), car);
+        tt.setToX(endX - startX);
+        tt.setToY(endY - startY);
+        tt.setOnFinished(e -> simulationPane.getChildren().remove(car));
+        tt.play();
+    }
+
 }
