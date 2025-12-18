@@ -135,9 +135,6 @@ public class TrafficSimulator extends Application {
         background.setFill(Color.web("#f3f3f3"));
         root.getChildren().add(background);
 
-        //Add simulationpane to root
-        root.getChildren().add(simulationPane);
-
         // grass shoulders (corners)
         Rectangle grassTopLeft = makeGrass(0, 0, centerX - JUNCTION_SIZE / 2 - 60, centerY - JUNCTION_SIZE / 2 - 60);
         Rectangle grassTopRight = makeGrass(centerX + JUNCTION_SIZE / 2 + 60, 0,
@@ -187,6 +184,18 @@ public class TrafficSimulator extends Application {
         roadD.setFill(Color.web("#3f3f3f"));
         root.getChildren().add(roadD);
 
+        // Draw junction FIRST (so roads are on top)
+
+        Rectangle junctionOverlay = new Rectangle(JUNCTION_SIZE, JUNCTION_SIZE);
+
+        junctionOverlay.setX(centerX - JUNCTION_SIZE / 2.0);
+
+        junctionOverlay.setY(centerY - JUNCTION_SIZE / 2.0);
+
+        junctionOverlay.setFill(Color.web("#4b4b4b"));
+
+        root.getChildren().add(junctionOverlay);
+
         // lane markings for each road (draw simple dashed white separators)
         drawLaneMarkingsForVerticalRoad(centerX - roadThickness / 2.0, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH,
                 roadThickness, ROAD_LENGTH );
@@ -217,9 +226,12 @@ public class TrafficSimulator extends Application {
         // Count Texts near each road entry
         countA = new Text(centerX - 60, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 20, "Queue : 0 | Passed : 0 ");
         countB = new Text(centerX - 60, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 6, "Queue : 0 | Passed : 0");
-        countC = new Text(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 100, centerY - 20, "Queue : 0 | Passed : 0");
-        countD = new Text(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10, centerY - 20, "Queue : 0 | Passed : 0 " );
+        countC = new Text(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 100, centerY - 35, "Queue : 0 | Passed : 0");
+        countD = new Text(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10, centerY - 35, "Queue : 0 | Passed : 0 " );
         root.getChildren().addAll(countA, countB, countC, countD);
+
+        // Add simulation pane LAST so cars appear on top of roads
+        root.getChildren().add(simulationPane);
     }
 
     // Make a grass rectangle
@@ -320,18 +332,26 @@ public class TrafficSimulator extends Application {
         }
     }
 
+    private int currentLaneIndex = 0; // For round-robin serving
+
     private void startSimulationLoop() {
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
 
             // Use to generate random numbers of cars in each lane
             generateRandomTraffic();
 
-            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.totalSIze());
-            trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.totalSIze());
-            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.totalSIze());
-            trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.totalSIze());
+            // Update display
+            updateCount();
+            updateWaitingCarsDisplay();
 
-            String next = trafficScheduler.getNextLaneToServe() != null ? trafficScheduler.serverAndRotateLane() : null;
+            // Round-robin serving: serve lanes in order A -> B -> C -> D -> A...
+            String[] laneOrder = {"A", "B", "C", "D"};
+            String next = laneOrder[currentLaneIndex];
+            currentLaneIndex = (currentLaneIndex + 1) % 4;
+
+            System.out.println("\n=== Cycle: Serving Lane " + next + " ===");
+            System.out.println("Queue Sizes: A=" + laneA.incomingSize() + ", B=" + laneB.incomingSize() +
+                             ", C=" + laneC.incomingSize() + ", D=" + laneD.incomingSize());
 
             if (next != null) {
 
@@ -348,19 +368,26 @@ public class TrafficSimulator extends Application {
                 Lane currentLane = null;
 
                 String trimmedNext = next.trim() ;
+                System.out.println("DEBUG: Scheduler returned: '" + next + "' -> trimmed: '" + trimmedNext + "'");
 
                 if(trimmedNext.equals("A")) {
                     currentLight = lightA;
                     currentLane = laneA;
+                    System.out.println("Matched Lane A");
                 }else if(trimmedNext.equals("B")) {
                     currentLight = lightB;
                     currentLane = laneB;
+                    System.out.println("Matched Lane B");
                 }else if(trimmedNext.equals("C")) {
                     currentLight = lightC;
                     currentLane = laneC;
+                    System.out.println("Matched Lane C");
                 }else if(trimmedNext.equals("D")) {
                     currentLight = lightD;
                     currentLane = laneD;
+                    System.out.println("Matched Lane D");
+                }else{
+                    System.out.println("ERROR: No lane matched! trimmedNext='" + trimmedNext + "'");
                 }
 
                 final String finalLaneName = trimmedNext ;
@@ -371,20 +398,18 @@ public class TrafficSimulator extends Application {
 
                     final Circle finalLight = currentLight ;
 
-                    int sumIncoming = laneA.incomingSize() + laneB.incomingSize() + laneC.incomingSize() + laneD.incomingSize();
-                    int n = 4;
-                    int v = (int) Math.round((double) sumIncoming / n);
-                    if (v < 1) v = 1;
+                    // Log current queue sizes before serving
+                    System.out.println("Before serving - Lane " + finalLaneName + " incoming queue size: " + finalcurrentLane.incomingSize());
 
-                    if ("A".equals(trimmedNext) && laneA.prioritySize() > 10) {
-                        v = Math.max(v, laneA.prioritySize());
-                    }
+                    // Serve up to 3 cars per green light (2-3 second cycle)
+                    int v = Math.min(finalcurrentLane.incomingSize(), 3);
+                    System.out.println("Will serve " + v + " cars from lane " + finalLaneName);
 
-                    // Serve v cars from the selected lane and animate each served car
+                    // Serve v cars from the selected lane with staggered animation
                     for (int i = 0; i < v; i++) {
                         String served = finalcurrentLane.dequeueFromIncoming();
                         if (served != null) {
-                            System.out.println("Car Served : " + served);
+                            System.out.println("Car Served: " + served + " (Queue: " + finalcurrentLane.incomingSize() + ")");
 
                             switch (finalLaneName){
                                 case "A" : passedCountA++ ; break ;
@@ -393,16 +418,22 @@ public class TrafficSimulator extends Application {
                                 case "D" : passedCountD++ ; break ;
                             }
 
-                            Platform.runLater(() -> createAndAnimateCar(finalLaneName));
+                            // Stagger car animations - 400ms between each
+                            final int delay = i * 400;
+                            Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
+                                createAndAnimateCar(finalLaneName);
+                            }));
+                            carTimeline.play();
                         }
                     }
 
-                    Timeline t = new Timeline(new KeyFrame((Duration.millis(500)), e2 -> {
+                    // Green light for 1.5 seconds, then yellow briefly
+                    Timeline t = new Timeline(new KeyFrame(Duration.millis(1500), e2 -> {
                         setLightColor(finalLight, Color.YELLOW);
-                            new Timeline(new KeyFrame(Duration.millis(800), e3 -> {
-                                    setLightColor(finalLight, Color.RED);
+                        new Timeline(new KeyFrame(Duration.millis(300), e3 -> {
+                            setLightColor(finalLight, Color.RED);
                         })).play();
-                    })) ;
+                    }));
                     t.play();
 
                 }
@@ -433,28 +464,60 @@ public class TrafficSimulator extends Application {
 
     private void updateCount() {
         Platform.runLater(() -> {
-            countA.setText("Queue : " + laneA.incomingSize() + "Passed : " + passedCountA );
-            countB.setText("Queue : " + laneB.incomingSize() + "Passed : " + passedCountB);
-            countC.setText("Queue : " + laneC.incomingSize() + "Passed : " + passedCountC);
-            countD.setText("Queue : " + laneD.incomingSize() + "Passed : " + passedCountD);
+            countA.setText("Queue : " + laneA.incomingSize() + " | Passed : " + passedCountA );
+            countB.setText("Queue : " + laneB.incomingSize() + " | Passed : " + passedCountB);
+            countC.setText("Queue : " + laneC.incomingSize() + " | Passed : " + passedCountC);
+            countD.setText("Queue : " + laneD.incomingSize() + " | Passed : " + passedCountD);
         });
     }
 
-    private void generateRandomTraffic() {
-        if (random_generator.nextDouble() < 0.6) laneA.enqueueToLane("A-" + System.currentTimeMillis() % 1000);
+    // Visualize waiting cars at each traffic light
+    private void updateWaitingCarsDisplay() {
+        Platform.runLater(() -> {
+            // Clear existing waiting car visualizations
+            simulationPane.getChildren().removeIf(node -> node.getUserData() != null && node.getUserData().equals("waiting"));
 
-        if (random_generator.nextDouble() < 0.5) laneB.enqueueToLane("B-" + System.currentTimeMillis() % 1000);
-        if (random_generator.nextDouble() < 0.75) laneC.enqueueToLane("C-" + System.currentTimeMillis() % 1000);
-        if (random_generator.nextDouble() < 0.45) laneD.enqueueToLane("D-" + System.currentTimeMillis() % 1000);
+            // Show up to 5 waiting cars for each lane
+            drawWaitingCars("A", laneA.incomingSize(), centerX - 15, centerY - JUNCTION_SIZE / 2.0 - 80, 0, -25);
+            drawWaitingCars("B", laneB.incomingSize(), centerX + 15, centerY + JUNCTION_SIZE / 2.0 + 80, 0, 25);
+            drawWaitingCars("C", laneC.incomingSize(), centerX + JUNCTION_SIZE / 2.0 + 80, centerY - 15, 25, 0);
+            drawWaitingCars("D", laneD.incomingSize(), centerX - JUNCTION_SIZE / 2.0 - 80, centerY + 15, -25, 0);
+        });
+    }
+
+    private void drawWaitingCars(String lane, int queueSize, double startX, double startY, double offsetX, double offsetY) {
+        int carsToShow = Math.min(queueSize, 5);
+        for (int i = 0; i < carsToShow; i++) {
+            Rectangle waitingCar = new Rectangle(15, 25, Color.GRAY);
+            waitingCar.setArcHeight(5);
+            waitingCar.setArcWidth(5);
+            waitingCar.setStroke(Color.DARKGRAY);
+            waitingCar.setStrokeWidth(1);
+            waitingCar.setX(startX + offsetX * i);
+            waitingCar.setY(startY + offsetY * i);
+            waitingCar.setUserData("waiting");
+            simulationPane.getChildren().add(waitingCar);
+        }
+    }
+
+    private void generateRandomTraffic() {
+        // Reduced traffic generation rates to prevent overwhelming the system
+        if (random_generator.nextDouble() < 0.4) laneA.enqueueToLane("A-" + System.currentTimeMillis() % 1000);
+        if (random_generator.nextDouble() < 0.35) laneB.enqueueToLane("B-" + System.currentTimeMillis() % 1000);
+        if (random_generator.nextDouble() < 0.5) laneC.enqueueToLane("C-" + System.currentTimeMillis() % 1000);
+        if (random_generator.nextDouble() < 0.3) laneD.enqueueToLane("D-" + System.currentTimeMillis() % 1000);
 
         // AL2 priority check (enqueue some priority vehicles)
-        if (random_generator.nextDouble() < 0.6) laneA.enqueueToLane(2, " AL2- " + System.currentTimeMillis() % 1000);
+        if (random_generator.nextDouble() < 0.3) laneA.enqueueToLane(2, " AL2- " + System.currentTimeMillis() % 1000);
     }
 
         private void createAndAnimateCar(String laneName) {
-            Rectangle car = new Rectangle(15, 30, getRandomCarColor());
-            car.setArcHeight(6);
-            car.setArcWidth(6);
+            System.out.println("Creating car animation for lane: " + laneName);
+            Rectangle car = new Rectangle(20, 35, getRandomCarColor());
+            car.setArcHeight(8);
+            car.setArcWidth(8);
+            car.setStroke(Color.BLACK);
+            car.setStrokeWidth(1);
 
             //Randomly choose the direction : Implemented the Path Transition.
             // ENUM : 0 = straight , 1 = left , 2= right
@@ -577,23 +640,23 @@ public class TrafficSimulator extends Application {
 
                 case "D": // From left going right
 
-                    start = new MoveTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY + laneOffset);
+                    start = new MoveTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY - laneOffset);
 
                     path.getElements().add(start);
 
-                    path.getElements().add(new LineTo(centerX - JUNCTION_SIZE / 2.0, centerY + laneOffset));
+                    path.getElements().add(new LineTo(centerX - JUNCTION_SIZE / 2.0, centerY - laneOffset));
 
 
 
                     if (direction == 0) { // Straight to C
 
-                        path.getElements().add(new LineTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH, centerY + laneOffset));
+                        path.getElements().add(new LineTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH, centerY - laneOffset));
 
                     } else if (direction == 1) { // Left to A
 
                         path.getElements().add(new QuadCurveTo(
 
-                                centerX, centerY + laneOffset,
+                                centerX, centerY - laneOffset,
 
                                 centerX - laneOffset, centerY));
 
@@ -603,9 +666,9 @@ public class TrafficSimulator extends Application {
 
                         path.getElements().add(new QuadCurveTo(
 
-                                centerX, centerY + laneOffset,
+                                centerX, centerY - laneOffset,
 
-                                centerX + laneOffset, centerY + ROAD_LENGTH));
+                                centerX + laneOffset, centerY));
 
                         path.getElements().add(new LineTo(centerX + laneOffset, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH));
 
@@ -615,7 +678,7 @@ public class TrafficSimulator extends Application {
 
             }
             simulationPane.getChildren().add(car);
-            PathTransition pt = new PathTransition(Duration.millis(1000), path, car);
+            PathTransition pt = new PathTransition(Duration.millis(2000), path, car);
             pt.setOnFinished(
                     event -> simulationPane.getChildren().remove(car));
             pt.play();
@@ -623,7 +686,7 @@ public class TrafficSimulator extends Application {
 
         private Color getRandomCarColor(){
                 Color[] colors = {
-                Color.BLUE , Color.RED, Color.ALICEBLUE , Color.ANTIQUEWHITE,
+                Color.BLUE, Color.RED, Color.GREEN, Color.ORANGE, Color.PURPLE, Color.YELLOW, Color.CYAN
                 };
             return colors[random_generator.nextInt(colors.length)] ;
 

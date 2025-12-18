@@ -21,7 +21,13 @@ public class LaneEntry implements Comparable<LaneEntry> {
 
     @Override
     public int compareTo(LaneEntry other) {
-        return Integer.compare(this.priorityScore, other.priorityScore);
+        // First compare by priority score (lower is higher priority)
+        int scoreComparison = Integer.compare(this.priorityScore, other.priorityScore);
+        if (scoreComparison != 0) {
+            return scoreComparison;
+        }
+        // If scores are equal, prioritize by vehicle count (more vehicles = higher priority)
+        return Integer.compare(other.vehicleCount, this.vehicleCount);
     }
 
     @Override
