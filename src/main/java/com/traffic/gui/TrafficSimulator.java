@@ -332,26 +332,23 @@ public class TrafficSimulator extends Application {
         }
     }
 
-    private int currentLaneIndex = 0; // For round-robin serving
+    private int currentLaneIndex = 0;
 
     private void startSimulationLoop() {
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(2.5), e -> {
 
-            // Use to generate random numbers of cars in each lane
-            generateRandomTraffic();
+            // Generate traffic less frequently
+            if (random_generator.nextDouble() < 0.5) generateRandomTraffic();
 
             // Update display
             updateCount();
-            updateWaitingCarsDisplay();
 
-            // Round-robin serving: serve lanes in order A -> B -> C -> D -> A...
+            // serve lanes A -> B -> C -> D -> A...
             String[] laneOrder = {"A", "B", "C", "D"};
             String next = laneOrder[currentLaneIndex];
             currentLaneIndex = (currentLaneIndex + 1) % 4;
 
-            System.out.println("\n=== Cycle: Serving Lane " + next + " ===");
-            System.out.println("Queue Sizes: A=" + laneA.incomingSize() + ", B=" + laneB.incomingSize() +
-                             ", C=" + laneC.incomingSize() + ", D=" + laneD.incomingSize());
+            System.out.println("\n Serving Lane " + next + " (Queue: A=" + laneA.incomingSize() + " B=" + laneB.incomingSize() + " C=" + laneC.incomingSize() + " D=" + laneD.incomingSize() + ") ");
 
             if (next != null) {
 
@@ -418,7 +415,7 @@ public class TrafficSimulator extends Application {
                                 case "D" : passedCountD++ ; break ;
                             }
 
-                            // Stagger car animations - 400ms between each
+                            // Stagger car animations - 400 ms between each
                             final int delay = i * 400;
                             Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
                                 createAndAnimateCar(finalLaneName);
@@ -471,34 +468,6 @@ public class TrafficSimulator extends Application {
         });
     }
 
-    // Visualize waiting cars at each traffic light
-    private void updateWaitingCarsDisplay() {
-        Platform.runLater(() -> {
-            // Clear existing waiting car visualizations
-            simulationPane.getChildren().removeIf(node -> node.getUserData() != null && node.getUserData().equals("waiting"));
-
-            // Show up to 5 waiting cars for each lane
-            drawWaitingCars("A", laneA.incomingSize(), centerX - 15, centerY - JUNCTION_SIZE / 2.0 - 80, 0, -25);
-            drawWaitingCars("B", laneB.incomingSize(), centerX + 15, centerY + JUNCTION_SIZE / 2.0 + 80, 0, 25);
-            drawWaitingCars("C", laneC.incomingSize(), centerX + JUNCTION_SIZE / 2.0 + 80, centerY - 15, 25, 0);
-            drawWaitingCars("D", laneD.incomingSize(), centerX - JUNCTION_SIZE / 2.0 - 80, centerY + 15, -25, 0);
-        });
-    }
-
-    private void drawWaitingCars(String lane, int queueSize, double startX, double startY, double offsetX, double offsetY) {
-        int carsToShow = Math.min(queueSize, 5);
-        for (int i = 0; i < carsToShow; i++) {
-            Rectangle waitingCar = new Rectangle(15, 25, Color.GRAY);
-            waitingCar.setArcHeight(5);
-            waitingCar.setArcWidth(5);
-            waitingCar.setStroke(Color.DARKGRAY);
-            waitingCar.setStrokeWidth(1);
-            waitingCar.setX(startX + offsetX * i);
-            waitingCar.setY(startY + offsetY * i);
-            waitingCar.setUserData("waiting");
-            simulationPane.getChildren().add(waitingCar);
-        }
-    }
 
     private void generateRandomTraffic() {
         // Reduced traffic generation rates to prevent overwhelming the system
@@ -525,11 +494,15 @@ public class TrafficSimulator extends Application {
             int direction = random_generator.nextInt(3);
 
             double roadThickness = LANE_WIDTH * 3;
-            double laneOffset = LANE_WIDTH / 2.0; // Middle of the Road
+
+
+            double laneOffset = LANE_WIDTH / 2.0; // Middle of the Road B To Spawn correct Wau
 
             Path path = new Path();
             MoveTo start = null ;
 
+            /*Each cases written here are on the basis of the direction where the actual they lies and how to make the car move in the different
+            direction from the origin path */
             switch(laneName){
                 case "A"  :
                     start = new MoveTo(centerX - laneOffset, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH);
@@ -560,19 +533,21 @@ public class TrafficSimulator extends Application {
                     break;
 
                 case "B" :
-                    start = new MoveTo(centerX + laneOffset, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH);
+                    start = new MoveTo(centerX - laneOffset, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH);
 
                     path.getElements().add(start);
 
-                    path.getElements().add(new LineTo(centerX + laneOffset, centerY + JUNCTION_SIZE / 2.0));
+                    path.getElements().add(new LineTo(centerX - laneOffset, centerY + JUNCTION_SIZE / 2.0));
 
 
 
-                    if (direction == 0) { // Straight to A
+                    if (direction == 0) {
+                        // Straight to A
 
                         path.getElements().add(new LineTo(centerX + laneOffset, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH));
 
-                    } else if (direction == 1) { // Left to D
+                    } else if (direction == 1) {
+                        // Left to D
 
                         path.getElements().add(new QuadCurveTo(
 
@@ -608,11 +583,13 @@ public class TrafficSimulator extends Application {
 
 
 
-                    if (direction == 0) { // Straight to D
+                    if (direction == 0) {
+                        // Straight to D
 
                         path.getElements().add(new LineTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY - laneOffset));
 
-                    } else if (direction == 1) { // Left to B
+                    } else if (direction == 1) {
+                        // Left to B
 
                         path.getElements().add(new QuadCurveTo(
 

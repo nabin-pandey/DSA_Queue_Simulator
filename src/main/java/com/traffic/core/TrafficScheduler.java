@@ -15,15 +15,19 @@ public class TrafficScheduler {
 
         laneA.setVehicleCount(currentCarCount);
 
-        //Priority Lane Logic (Lower score = Higher priority in PriorityQueue)
+        /* ENUM for priority
+            1 - Highest Priority
+            5-Medium Priority
+            10- Lowest Priority
+        */
         if(currentCarCount > 10){
-            laneA.setPriorityScore(1); // HIGH PRIORITY (low score)
+            laneA.setPriorityScore(1);
             System.out.println("Alert : Road : " + laneA.getRoadId() + " is overcrowded" + "(Count :"+ currentCarCount +") set to HIGH PRIORITY" );
         }else if(currentCarCount > 5){
-            laneA.setPriorityScore(5); // MEDIUM PRIORITY
+            laneA.setPriorityScore(5);
             System.out.println("Road : "+ laneA.getRoadId() +  "(Count :"+ currentCarCount +") set to MEDIUM PRIORITY");
         }else{
-            laneA.setPriorityScore(10); // LOW PRIORITY (high score)
+            laneA.setPriorityScore(10);
             System.out.println("Road " + laneA.getRoadId() + " set to NORMAL PRIORITY");
         }
 
@@ -39,7 +43,7 @@ public class TrafficScheduler {
 
         String servedId = servedLane.getRoadId();
         
-        System.out.println(">>> Scheduler selected lane: " + servedId + " (priority=" + servedLane.getPriorityScore() + ", count=" + servedLane.getVehicleCount() + ")");
+        System.out.println(" Scheduler selected lane: " + servedId + " priority=" + servedLane.getPriorityScore() + ", count=" + servedLane.getVehicleCount() );
         
         laneQueue.add(servedLane);
         return servedId;
