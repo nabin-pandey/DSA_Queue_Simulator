@@ -23,7 +23,7 @@ public class TrafficScheduler {
             System.out.println("Road : "+ laneA.getRoadId() +  "(Count :"+ currentCarCount +") retains HIGH PRIORITY");
         }else{
             laneA.setPriorityScore(1);
-            System.out.println("Road" + laneA.getRoadId() + " set to NORMAL PRIORITY");
+            System.out.println("Road" + laneA.getRoadId() + "set to NORMAL PRIORITY");
         }
 
         laneQueue.add(laneA);
