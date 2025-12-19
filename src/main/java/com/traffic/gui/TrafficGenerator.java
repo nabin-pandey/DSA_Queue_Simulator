@@ -74,10 +74,9 @@ public class TrafficGenerator {
 
     // Add a waiting car visual at the stop line
     private void addWaitingCar(String laneName) {
-        Rectangle waitingCar = new Rectangle(20, 35, Color.GRAY);
+        Rectangle waitingCar = new Rectangle(20, 35, getRandomCarColor());
         waitingCar.setArcHeight(8);
         waitingCar.setArcWidth(8);
-        waitingCar.setStroke(Color.DARKGRAY);
         waitingCar.setStrokeWidth(1);
 
         double laneOffset = LANE_WIDTH / 2.0;
@@ -87,7 +86,7 @@ public class TrafficGenerator {
             case "A":
                 waitingList = waitingCarsA;
                 double xA = centerX - laneOffset;
-                double yA = centerY - JUNCTION_SIZE / 2.0 - 40 - (waitingList.size() * 45);
+                double yA = centerY - JUNCTION_SIZE / 2.0 - 60 - (waitingList.size() * 45);
                 waitingCar.setX(xA - 10);
                 waitingCar.setY(yA);
                 break;
@@ -95,14 +94,14 @@ public class TrafficGenerator {
             case "B":
                 waitingList = waitingCarsB;
                 double xB = centerX + laneOffset;
-                double yB = centerY + JUNCTION_SIZE / 2.0 + 40 + (waitingList.size() * 45);
+                double yB = centerY + JUNCTION_SIZE / 2.0 + 60 + (waitingList.size() * 45);
                 waitingCar.setX(xB - 10);
                 waitingCar.setY(yB);
                 break;
 
             case "C":
                 waitingList = waitingCarsC;
-                double xC = centerX + JUNCTION_SIZE / 2.0 + 40 + (waitingList.size() * 45);
+                double xC = centerX + JUNCTION_SIZE / 2.0 + 60 + (waitingList.size() * 45);
                 double yC = centerY - laneOffset;
                 waitingCar.setX(xC);
                 waitingCar.setY(yC - 17.5);
@@ -152,22 +151,22 @@ public class TrafficGenerator {
 
             switch (laneName) {
                 case "A":
-                    double yA = centerY - JUNCTION_SIZE / 2.0 - 40 - (i * 45);
+                    double yA = centerY - JUNCTION_SIZE / 2.0 - 60 - (i * 45);
                     car.setY(yA);
                     break;
 
                 case "B":
-                    double yB = centerY + JUNCTION_SIZE / 2.0 + 40 + (i * 45);
+                    double yB = centerY + JUNCTION_SIZE / 2.0 + 60 + (i * 45);
                     car.setY(yB);
                     break;
 
                 case "C":
-                    double xC = centerX + JUNCTION_SIZE / 2.0 + 40 + (i * 45);
+                    double xC = centerX + JUNCTION_SIZE / 2.0 + 60 + (i * 45);
                     car.setX(xC);
                     break;
 
                 case "D":
-                    double xD = centerX - JUNCTION_SIZE / 2.0 - 40 - (i * 45);
+                    double xD = centerX - JUNCTION_SIZE / 2.0 - 60 - (i * 45);
                     car.setX(xD);
                     break;
             }
@@ -205,7 +204,7 @@ public class TrafficGenerator {
 
         switch(laneName) {
             case "A": // From top going down
-                start = new MoveTo(centerX - laneOffset, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 30);
+                start = new MoveTo(centerX - laneOffset, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 50);
                 path.getElements().add(start);
                 path.getElements().add(new LineTo(centerX - laneOffset, centerY - JUNCTION_SIZE / 2.0));
 
@@ -225,7 +224,7 @@ public class TrafficGenerator {
                 break;
 
             case "B": // From bottom going up
-                start = new MoveTo(centerX + laneOffset, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 30);
+                start = new MoveTo(centerX + laneOffset, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 50);
                 path.getElements().add(start);
                 path.getElements().add(new LineTo(centerX + laneOffset, centerY + JUNCTION_SIZE / 2.0));
 
@@ -245,7 +244,7 @@ public class TrafficGenerator {
                 break;
 
             case "C": // From right going left
-                start = new MoveTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 30, centerY - laneOffset);
+                start = new MoveTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 50, centerY - laneOffset);
                 path.getElements().add(start);
                 path.getElements().add(new LineTo(centerX + JUNCTION_SIZE / 2.0, centerY - laneOffset));
 
@@ -265,7 +264,7 @@ public class TrafficGenerator {
                 break;
 
             case "D": // From left going right
-                start = new MoveTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 30, centerY + laneOffset);
+                start = new MoveTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 50, centerY + laneOffset);
                 path.getElements().add(start);
                 path.getElements().add(new LineTo(centerX - JUNCTION_SIZE / 2.0, centerY + laneOffset));
 

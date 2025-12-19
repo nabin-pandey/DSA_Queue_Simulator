@@ -27,6 +27,13 @@ public class TrafficSimulator extends Application {
     private static final int LIGHT_SIZE = 10;
     private static final int ROAD_LENGTH = 300;
 
+    //Traffic Light wrapper
+    private TrafficLight trafficLightA ;
+    private TrafficLight trafficLightB ;
+    private TrafficLight trafficLightC ;
+    private TrafficLight trafficLightD ;
+
+
     // Traffic Light Circles
     private Circle lightA;
     private Circle lightB;
@@ -66,8 +73,6 @@ public class TrafficSimulator extends Application {
 
     //Generate random numbers
     private final Random random_generator = new Random();
-
-
 
     // Traffic generator
     private TrafficGenerator trafficGenerator;
@@ -201,6 +206,13 @@ public class TrafficSimulator extends Application {
         lightD = new Circle(centerX - JUNCTION_SIZE / 2.0 - 20, centerY + (LANE_WIDTH) / 2.0, LIGHT_SIZE, Color.RED);
         root.getChildren().addAll(lightA, lightB, lightC, lightD);
 
+        //Fixed : Initializaton of Traffic :
+        trafficLightA = new TrafficLight(lightA);
+        trafficLightB = new TrafficLight(lightB);
+        trafficLightC = new TrafficLight(lightC);
+        trafficLightD = new TrafficLight(lightD);
+
+
         // Labels
         Text LabelA = new Text(centerX - 12, centerY - ROAD_LENGTH - LANE_WIDTH / 2.0 + 8, "Road A");
         Text LabelB = new Text(centerX - 12, centerY + ROAD_LENGTH + LANE_WIDTH, "Road B");
@@ -310,57 +322,80 @@ public class TrafficSimulator extends Application {
             updateCount();
 
             //  lane serving: A -> B -> C -> D
-            String[] laneOrder = {"A", "B", "C", "D"};
-            int currentLaneIndex = 0;
-            String next = laneOrder[currentLaneIndex];
-            currentLaneIndex = (currentLaneIndex + 1) % 4;
+            laneEntryA.setVehicleCount(laneA.incomingSize());
+            laneEntryB.setVehicleCount(laneB.incomingSize());
+            laneEntryC.setVehicleCount(laneC.incomingSize());
+            laneEntryD.setVehicleCount(laneD.incomingSize());
 
-            System.out.println("\nServing Lane " + next + " Queue: A=" + laneA.incomingSize() +
+// Update priority based on current counts
+            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize());
+            trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize());
+            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize());
+            trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize());
+
+// Get the next lane to serve based on priority
+            String next = trafficScheduler.serverAndRotateLane();
+
+            System.out.println("\nScheduler selected lane " + next + " Queue: A=" + laneA.incomingSize() +
                     " B=" + laneB.incomingSize() + " C=" + laneC.incomingSize() +
                     " D=" + laneD.incomingSize()  );
 
             // Set all lights to red
-            setLightColor(lightA, Color.RED);
-            setLightColor(lightB, Color.RED);
-            setLightColor(lightC, Color.RED);
-            setLightColor(lightD, Color.RED);
+            trafficLightA.setState(TrafficLight.State.RED);
+            trafficLightB.setState(TrafficLight.State.RED);
+            trafficLightC.setState(TrafficLight.State.RED);
+            trafficLightD.setState(TrafficLight.State.RED);
 
-            Circle currentLight = null;
+           TrafficLight currentTrafficLight = null ;
             Lane currentLane = null;
 
             String trimmedNext = next.trim();
 
             if (trimmedNext.equals("A")) {
-                currentLight = lightA;
+                currentTrafficLight = trafficLightA;
                 currentLane = laneA;
             } else if (trimmedNext.equals("B")) {
-                currentLight = lightB;
+                currentTrafficLight = trafficLightB;
                 currentLane = laneB;
             } else if (trimmedNext.equals("C")) {
-                currentLight = lightC;
+                currentTrafficLight = trafficLightC;
                 currentLane = laneC;
             } else if (trimmedNext.equals("D")) {
-                currentLight = lightD;
+                currentTrafficLight = trafficLightD;
                 currentLane = laneD;
             }
 
             final String finalLaneName = trimmedNext;
             final Lane finalCurrentLane = currentLane;
 
-            if (currentLight != null && currentLane != null) {
-                setLightColor(currentLight, Color.GREEN);
+            if (currentTrafficLight != null && currentLane != null) {
+                currentTrafficLight.setState(TrafficLight.State.GREEN);
 
-                final Circle finalLight = currentLight;
+                final TrafficLight finalTrafficLight = currentTrafficLight;
+                int carsToServe ;
 
                 // Serve up to 3 cars per green light
-                int v = Math.min(finalCurrentLane.incomingSize(), 3);
-                System.out.println("Will serve " + v + " cars from lane " + finalLaneName);
 
-                // Release waiting cars visually
-                trafficGenerator.releaseWaitingCars(finalLaneName, v);
+                if (finalCurrentLane.incomingSize() > 10) {
+                    // For overcrowded lanes, serve more cars to clear the queue
+                    // For overcrowded lanes, serve more cars
+                    carsToServe = Math.min(finalCurrentLane.incomingSize(), 6); // Up to 6 for overcrowded
+                    System.out.println("OVERLOADED LANE " + finalLaneName + "! Serving " + carsToServe + " cars");
+                } else if (finalCurrentLane.incomingSize() > 5) {
+                    // For medium traffic, serve moderate number of caes
+                    carsToServe = Math.min(finalCurrentLane.incomingSize(), 4); // Up to 4
+                } else {
+                    // Normal traffic
+                    carsToServe = Math.min(finalCurrentLane.incomingSize(), 3); // Up to 3
+                }
+
+                System.out.println("Will serve " + carsToServe + " cars from lane " + finalLaneName);
+
+                // Release waiting cars visually BEFORE serving
+                trafficGenerator.releaseWaitingCars(finalLaneName, carsToServe);
 
                 // Serve cars with staggered animation
-                for (int i = 0; i < v; i++) {
+                for (int i = 0; i < carsToServe; i++) {
                     String served = finalCurrentLane.dequeueFromIncoming();
                     if (served != null) {
                         System.out.println("Car Served: " + served + " (Queue: " + finalCurrentLane.incomingSize() + ")");
@@ -381,11 +416,13 @@ public class TrafficSimulator extends Application {
                     }
                 }
 
+                //As there are cars moving green ligght will lit up till that
+                int greenDuration = 1500 + (carsToServe * 300);
                 // Green to yellow to red transition
-                Timeline t = new Timeline(new KeyFrame(Duration.millis(1500), e2 -> {
-                    setLightColor(finalLight, Color.YELLOW);
-                    new Timeline(new KeyFrame(Duration.millis(300), e3 -> {
-                        setLightColor(finalLight, Color.RED);
+                Timeline t = new Timeline(new KeyFrame(Duration.millis(greenDuration), e2 -> {
+                    finalTrafficLight.setState(TrafficLight.State.YELLOW);
+                    new Timeline(new KeyFrame(Duration.millis(700), e3 -> {
+                        finalTrafficLight.setState(TrafficLight.State.RED);
                     })).play();
                 }));
                 t.play();
@@ -399,10 +436,10 @@ public class TrafficSimulator extends Application {
         timeline.play();
     }
 
-    public void setLightColor(Circle light, Color color) {
-        if (light == null) return;
-        Platform.runLater(() -> light.setFill(color));
-    }
+//    public void setLightColor(Circle light, Color color) {
+//        if (light == null) return;
+//        Platform.runLater(() -> light.setFill(color));
+//    }
 
     private void updateCount() {
         Platform.runLater(() -> {
