@@ -17,6 +17,7 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import com.traffic.gui.TrafficLight;
 
 public class TrafficSimulator extends Application {
 
@@ -76,6 +77,10 @@ public class TrafficSimulator extends Application {
 
     // Traffic generator
     private TrafficGenerator trafficGenerator;
+
+    //For Lanes :L
+    private int currentLaneIndex = 0;
+    private static final String[] LANE_ORDER = {"A", "B", "C", "D"};
 
     public static void main(String[] args) {
         launch(args);
@@ -333,8 +338,15 @@ public class TrafficSimulator extends Application {
             trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize());
             trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize());
 
+
+
 // Get the next lane to serve based on priority
             String next = trafficScheduler.serverAndRotateLane();
+            if (next == null || next.contains("No lanes")) {
+                next = LANE_ORDER[currentLaneIndex % 4];
+                currentLaneIndex++;
+                System.out.println("Using fallback rotation: " + next);
+            }
 
             System.out.println("\nScheduler selected lane " + next + " Queue: A=" + laneA.incomingSize() +
                     " B=" + laneB.incomingSize() + " C=" + laneC.incomingSize() +

@@ -10,28 +10,37 @@ public class TrafficScheduler {
         laneQueue = new PriorityQueue<>(laneEntries);
     }
 
-    public void CheckandUpdatePriority(LaneEntry laneA, int currentCarCount) {
-        laneQueue.remove(laneA);
+    public void CheckandUpdatePriority(LaneEntry laneEntry, int currentCarCount) {
+        laneQueue.remove(laneEntry);
+        laneEntry.setVehicleCount(currentCarCount);
+        String roadId = laneEntry.getRoadId();
 
-        laneA.setVehicleCount(currentCarCount);
 
         /* ENUM for priority
             1 - Highest Priority
             5-Medium Priority
             10- Lowest Priority
         */
-        if(currentCarCount > 10){
-            laneA.setPriorityScore(1);
-            System.out.println("Alert : Road : " + laneA.getRoadId() + " is overcrowded" + "(Count :"+ currentCarCount +") set to HIGH PRIORITY" );
-        }else if(currentCarCount > 5){
-            laneA.setPriorityScore(5);
-            System.out.println("Road : "+ laneA.getRoadId() +  "(Count :"+ currentCarCount +") set to MEDIUM PRIORITY");
-        }else{
-            laneA.setPriorityScore(10);
-            System.out.println("Road " + laneA.getRoadId() + " set to NORMAL PRIORITY");
+        if (roadId.equals("A")) {
+            if (currentCarCount > 10) {
+                laneEntry.setPriorityScore(1);
+                System.out.println("AL2 PRIORITY LANE OVERCROWDED! Count: " + currentCarCount);
+            } else if (currentCarCount > 5) {
+                laneEntry.setPriorityScore(5);
+            } else {
+                laneEntry.setPriorityScore(10);
+            }
+        } else {
+            // Roads B, C, D - never get highest priority
+            if (currentCarCount > 10) {
+                laneEntry.setPriorityScore(5); // Medium priority only
+                System.out.println("Road " + roadId + " crowded: " + currentCarCount);
+            } else {
+                laneEntry.setPriorityScore(10);
+            }
         }
 
-        laneQueue.add(laneA);
+        laneQueue.add(laneEntry);
     }
 
     public LaneEntry getNextLaneToServe(){  return laneQueue.peek();    }

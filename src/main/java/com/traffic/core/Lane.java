@@ -41,16 +41,21 @@ public class Lane {
         return lane2.dequeue();
     }
 
+
     //Returning Lane Size
     public int incomingSize(){ return lane1.getSize(); }
     public int prioritySize(){ return lane2.getSize(); }
-    public int leftOnlySize(){ return lane3.getSize(); }
+    public int leftTurnSize(){ return lane3.getSize(); }
 
     //Total Size of the Vehicle that is in the queue.
-    public int totalSIze(){ return incomingSize() + prioritySize() + leftOnlySize(); }
+    public int totalSIze(){ return incomingSize() + prioritySize() + leftTurnSize(); }
 
     public boolean incomingEmpty(){ return lane1.isEmpty(); }
     public boolean priorityEmpty(){ return lane2.isEmpty(); }
-    public boolean leftOnlyEmpty(){ return lane3.isEmpty(); }
+    public boolean leftTurnEmpty(){ return lane3.isEmpty(); }
+
+    public boolean needsPriorityService(){ return prioritySize() > 10 ; }
+
+    public boolean priorityServiceComplete() { return prioritySize() < 5 ; }
 
 }

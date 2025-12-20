@@ -49,27 +49,28 @@ public class TrafficGenerator {
     // Generate random traffic for all lanes
     public void generateRandomTraffic() {
         if (random.nextDouble() < 0.4) {
-            laneA.enqueueToLane("A-" + System.currentTimeMillis() % 1000);
+            laneA.enqueueToLane(1,"A1-" + System.currentTimeMillis() % 1000);
+            addWaitingCar("A");
+        }
+        //AL2 - Priority Lane
+        if (random.nextDouble() < 0.25) {
+            laneA.enqueueToLane(2, "A2-" + System.currentTimeMillis() % 1000);
             addWaitingCar("A");
         }
         if (random.nextDouble() < 0.35) {
-            laneB.enqueueToLane("B-" + System.currentTimeMillis() % 1000);
+            laneB.enqueueToLane(1,"B1-" + System.currentTimeMillis() % 1000);
             addWaitingCar("B");
         }
         if (random.nextDouble() < 0.5) {
-            laneC.enqueueToLane("C-" + System.currentTimeMillis() % 1000);
+            laneC.enqueueToLane(1,"C1-" + System.currentTimeMillis() % 1000);
             addWaitingCar("C");
         }
         if (random.nextDouble() < 0.3) {
-            laneD.enqueueToLane("D-" + System.currentTimeMillis() % 1000);
+            laneD.enqueueToLane(1,"D1-" + System.currentTimeMillis() % 1000);
             addWaitingCar("D");
         }
 
-        // AL2 priority vehicles
-        if (random.nextDouble() < 0.3) {
-            laneA.enqueueToLane(2, "AL2-" + System.currentTimeMillis() % 1000);
-            addWaitingCar("A");
-        }
+
     }
 
     // Add a waiting car visual at the stop line

@@ -5,12 +5,14 @@ public class LaneEntry implements Comparable<LaneEntry> {
     private String roadId;
     private int priorityScore ;
     private int vehicleCount ;
+    private int priorityLaneCount ;
 
 
     public LaneEntry(String roadId, int initialCount) {
         this.roadId = roadId;
-        this.priorityScore = 1;
+        this.priorityScore = 10;
         this.vehicleCount = initialCount;
+        this.priorityLaneCount = 0 ;
     }
 
     public String getRoadId() { return roadId; }
@@ -19,17 +21,17 @@ public class LaneEntry implements Comparable<LaneEntry> {
 
     public void setPriorityScore(int score) { this.priorityScore = score; }
     public void setVehicleCount(int count) { this.vehicleCount = count; }
+    public void setPriorityLaneCount(int count) {this.priorityLaneCount = count; }
 
 
     @Override
     public int compareTo(LaneEntry other) {
         // First compare by priority score (lower is higher priority)
-        int scoreComparison = Integer.compare(this.priorityScore, other.priorityScore);
-        if (scoreComparison != 0) {
-            return scoreComparison;
-        }
+        int thisTotalVehicles = this.vehicleCount + this.priorityLaneCount;
+        int otherTotalVehicles = other.vehicleCount + other.priorityLaneCount;
+
         // If scores are equal, prioritize by vehicle count (more vehicles = higher priority)
-        return Integer.compare(other.vehicleCount, this.vehicleCount);
+        return Integer.compare(otherTotalVehicles, thisTotalVehicles);
     }
 
     @Override
