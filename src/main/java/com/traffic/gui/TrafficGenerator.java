@@ -86,8 +86,8 @@ public class TrafficGenerator {
         switch (laneName) {
             case "A":
                 waitingList = waitingCarsA;
-                double xA = centerX - laneOffset;
-                double yA = centerY - JUNCTION_SIZE / 2.0 - 60 - (waitingList.size() * 45);
+                double xA = centerX - laneOffset + 25;
+                double yA = centerY - JUNCTION_SIZE / 2.0 - 80 - (waitingList.size() * 45);
                 waitingCar.setX(xA - 10);
                 waitingCar.setY(yA);
                 break;

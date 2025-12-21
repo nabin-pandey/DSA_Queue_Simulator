@@ -65,6 +65,7 @@ public class TrafficSimulator extends Application {
     private int passedCountB = 0;
     private int passedCountC = 0;
     private int passedCountD = 0;
+    private int passedPriorityA = 0 ; //for the count of the priority lane
 
     // UI components
     private Pane root;
@@ -333,10 +334,10 @@ public class TrafficSimulator extends Application {
             laneEntryD.setVehicleCount(laneD.incomingSize());
 
 // Update priority based on current counts
-            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize());
-            trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize());
-            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize());
-            trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize());
+            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize() );
+            trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize(),0);
+            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(), 0);
+            trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize(),0);
 
 
 
@@ -384,69 +385,89 @@ public class TrafficSimulator extends Application {
                 currentTrafficLight.setState(TrafficLight.State.GREEN);
 
                 final TrafficLight finalTrafficLight = currentTrafficLight;
-                int carsToServe ;
+                int carsToServe;
+                boolean servingPriorityLane = false;
+                // FIXED: Check if we should serve AL2 priority lane
+                if (finalLaneName.equals("A") && finalCurrentLane.prioritySize() > 0 &&
+                        trafficScheduler.isPriorityModeActive()) {
+                    // Serve from AL2 until it drops below 5
+                    carsToServe = Math.min(finalCurrentLane.prioritySize(), 6);
+                    servingPriorityLane = true;
+                    System.out.println("SERVING PRIORITY LANE AL2! Cars: " + carsToServe);
 
-                // Serve up to 3 cars per green light
-
-                if (finalCurrentLane.incomingSize() > 10) {
-                    // For overcrowded lanes, serve more cars to clear the queue
-                    // For overcrowded lanes, serve more cars
-                    carsToServe = Math.min(finalCurrentLane.incomingSize(), 6); // Up to 6 for overcrowded
-                    System.out.println("OVERLOADED LANE " + finalLaneName + "! Serving " + carsToServe + " cars");
-                } else if (finalCurrentLane.incomingSize() > 5) {
-                    // For medium traffic, serve moderate number of caes
-                    carsToServe = Math.min(finalCurrentLane.incomingSize(), 4); // Up to 4
-                } else {
-                    // Normal traffic
-                    carsToServe = Math.min(finalCurrentLane.incomingSize(), 3); // Up to 3
                 }
-
-                System.out.println("Will serve " + carsToServe + " cars from lane " + finalLaneName);
-
-                // Release waiting cars visually BEFORE serving
+                // FIXED: Use formula |V| = avg vehicles across lanen
+                else {
+                    List<LaneEntry> entries = new ArrayList<>();
+                    entries.add(laneEntryA);
+                    entries.add(laneEntryB);
+                    entries.add(laneEntryC);
+                    entries.add(laneEntryD);
+                    int avgVehicles = trafficScheduler.calculateAverageVehicles(entries);
+                    carsToServe = Math.max(1, Math.min(avgVehicles, finalCurrentLane.incomingSize()));
+                    System.out.println("Average vehicles: " + avgVehicles + " | Serving: " + carsToServe);
+                }
+                final boolean isServingPriority = servingPriorityLane;
                 trafficGenerator.releaseWaitingCars(finalLaneName, carsToServe);
 
                 // Serve cars with staggered animation
                 for (int i = 0; i < carsToServe; i++) {
-                    String served = finalCurrentLane.dequeueFromIncoming();
-                    if (served != null) {
-                        System.out.println("Car Served: " + served + " (Queue: " + finalCurrentLane.incomingSize() + ")");
 
-                        switch (finalLaneName) {
-                            case "A": passedCountA++; break;
-                            case "B": passedCountB++; break;
-                            case "C": passedCountC++; break;
-                            case "D": passedCountD++; break;
+                    String served;
+                    // FIXED: Dequeue from correct lane
+                    if (isServingPriority) {
+                        served = finalCurrentLane.dequeueFromPriority(); // AL2
+                        if (served != null) passedPriorityA++;
+                    } else {
+                        served = finalCurrentLane.dequeueFromIncoming(); // AL1
+                        if (served != null) {
+                            switch (finalLaneName) {
+                                case "A":
+                                    passedCountA++;
+                                    break;
+                                case "B":
+                                    passedCountB++;
+                                    break;
+                                case "C":
+                                    passedCountC++;
+                                    break;
+                                case "D":
+                                    passedCountD++;
+                                    break;
+                            }
+
+                            // Stagger animations
+                            if (served != null) {
+
+                                System.out.println("Serving " + served + " from lane " + finalLaneName);
+                                final int delay = i * 400;
+                                Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
+                                    trafficGenerator.createAndAnimateCar(finalLaneName);
+                                }));
+                                carTimeline.play();
+                            }
                         }
-
-                        // Stagger animations
-                        final int delay = i * 400;
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.createAndAnimateCar(finalLaneName);
-                        }));
-                        carTimeline.play();
                     }
+
+                    //As there are cars moving green ligght will lit up till that
+                    int greenDuration = 1500 + (carsToServe * 300);
+                    // Green to yellow to red transition
+                    Timeline t = new Timeline(new KeyFrame(Duration.millis(greenDuration), e2 -> {
+                        finalTrafficLight.setState(TrafficLight.State.YELLOW);
+                        new Timeline(new KeyFrame(Duration.millis(700), e3 -> {
+                            finalTrafficLight.setState(TrafficLight.State.RED);
+                        })).play();
+                    }));
+                    t.play();
                 }
 
-                //As there are cars moving green ligght will lit up till that
-                int greenDuration = 1500 + (carsToServe * 300);
-                // Green to yellow to red transition
-                Timeline t = new Timeline(new KeyFrame(Duration.millis(greenDuration), e2 -> {
-                    finalTrafficLight.setState(TrafficLight.State.YELLOW);
-                    new Timeline(new KeyFrame(Duration.millis(700), e3 -> {
-                        finalTrafficLight.setState(TrafficLight.State.RED);
-                    })).play();
-                }));
-                t.play();
-            }
-
-            updateCount();
-        }));
+                updateCount();
+        })) ;
 
         updateCount();
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
-    }
+
 
 //    public void setLightColor(Circle light, Color color) {
 //        if (light == null) return;
@@ -454,11 +475,11 @@ public class TrafficSimulator extends Application {
 //    }
 
     private void updateCount() {
-        Platform.runLater(() -> {
-            countA.setText("Queue:" + laneA.incomingSize() + " | Passed:" + passedCountA);
-            countB.setText("Queue:" + laneB.incomingSize() + " | Passed:" + passedCountB);
-            countC.setText("Queue:" + laneC.incomingSize() + " | Passed:" + passedCountC);
-            countD.setText("Queue:" + laneD.incomingSize() + " | Passed:" + passedCountD);
-        });
-    }
-}
+                Platform.runLater(() -> {
+                    countA.setText("AL1:" + laneA.incomingSize() + " | Passed:" + passedCountA);
+                    countB.setText("AL2:" + laneB.incomingSize() + " | Passed:" + passedCountB);
+                    countC.setText("AL3:" + laneC.incomingSize() + " | Passed:" + passedCountC);
+                    countD.setText("AL4:" + laneD.incomingSize() + " | Passed:" + passedCountD);
+                });
+            }
+        }
