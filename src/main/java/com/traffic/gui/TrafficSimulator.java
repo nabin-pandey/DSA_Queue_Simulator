@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import com.traffic.gui.TrafficLight;
+import java.io.*;
+import java.util.*;
+import java.nio.file.* ;
 
 public class TrafficSimulator extends Application {
 
@@ -59,6 +62,7 @@ public class TrafficSimulator extends Application {
     private Text countB;
     private Text countC;
     private Text countD;
+    private Text fileStatusText;
 
     // Counters for passed cars
     private int passedCountA = 0;
@@ -78,6 +82,12 @@ public class TrafficSimulator extends Application {
 
     // Traffic generator
     private TrafficGenerator trafficGenerator;
+
+    //To read the files from the TrafficGenerator.
+    private static final String Lane_A_File = "lanea.txt";
+    private static final String Lane_B_File = "laneb.txt";
+    private static final String Lane_C_File = "lanec.txt";
+    private static final String Lane_D_File = "laned.txt";
 
     //For Lanes :L
     private int currentLaneIndex = 0;

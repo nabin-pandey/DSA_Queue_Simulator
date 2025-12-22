@@ -31,9 +31,14 @@ public class TrafficGenerator {
 
     // Store waiting cars for each lane
     private final List<Rectangle> waitingCarsA = new ArrayList<>();
+    private final List<Rectangle> waitingCarsA_L2 = new ArrayList<>();
+    private final List<Rectangle> waitingCarsA_L3 = new ArrayList<>();
     private final List<Rectangle> waitingCarsB = new ArrayList<>();
+    private final List<Rectangle> waitingCarsB_L2 = new ArrayList<>();
     private final List<Rectangle> waitingCarsC = new ArrayList<>();
+    private final List<Rectangle> waitingCarsC_L3 = new ArrayList<>();
     private final List<Rectangle> waitingCarsD = new ArrayList<>();
+    private final List<Rectangle> waitingCarsD_L3 = new ArrayList<>();
 
     public TrafficGenerator(Lane laneA, Lane laneB, Lane laneC, Lane laneD,
                             Pane simulationPane, double centerX, double centerY) {
