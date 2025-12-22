@@ -334,9 +334,9 @@ public class TrafficSimulator extends Application {
             laneEntryD.setVehicleCount(laneD.incomingSize());
 
 // Update priority based on current counts
-            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize() );
+            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize(),1 );
             trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize(),0);
-            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(), 0);
+            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(),0);
             trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize(),0);
 
 
@@ -462,17 +462,13 @@ public class TrafficSimulator extends Application {
                 }
 
                 updateCount();
+            }
         })) ;
 
         updateCount();
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
-
-
-//    public void setLightColor(Circle light, Color color) {
-//        if (light == null) return;
-//        Platform.runLater(() -> light.setFill(color));
-//    }
+        }
 
     private void updateCount() {
                 Platform.runLater(() -> {
