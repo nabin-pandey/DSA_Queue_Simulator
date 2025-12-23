@@ -89,6 +89,10 @@ public class TrafficSimulator extends Application {
     private static final String Lane_C_File = "lanec.txt";
     private static final String Lane_D_File = "laned.txt";
 
+    //Read the Files
+    private Map<String, Long> lastReadPositiion = new HashMap<>();
+    private Timeline filePollingTimeline ;
+
     //For Lanes :L
     private int currentLaneIndex = 0;
     private static final String[] LANE_ORDER = {"A", "B", "C", "D"};
@@ -144,7 +148,44 @@ public class TrafficSimulator extends Application {
         primaryStage.setTitle("DSA Queue Simulator");
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        //Inititating the reading of the position
+
+        lastReadPositiion.put(Lane_A_File, 0L);
+        lastReadPositiion.put(Lane_B_File, 0L);
+        lastReadPositiion.put(Lane_C_File, 0L);
+        lastReadPositiion.put(Lane_D_File, 0L);
+
+        System.out.println("Traffic Simulator Started : ");
+        System.out.println("Reading the files : ");
+        System.out.println(" - "+Lane_A_File);
+        System.out.println(" - "+Lane_B_File);
+        System.out.println(" - "+Lane_C_File);
+        System.out.println(" - "+Lane_D_File);
     }
+
+    private void startFilePolling() {
+        filePollingTimeline = new Timeline(new KeyFrame(Duration.millis(500), e -> {
+            //From the Generator files to Simulator
+            readNewVehicles();
+        }));
+        filePollingTimeline.setCycleCount(Timeline.INDEFINITE);
+        filePollingTimeline.play();
+        updateFileStatus("Polling Files...", Color.GREEN);
+    }
+
+    private void readNewVehicles() {
+        try {
+            readVehicles(Lane_A_File, laneA, "A");
+            readVehicles(Lane_B_File, laneB, "B");
+            readVehicles(Lane_C_File, laneC, "C");
+            readVehicles(Lane_D_File, laneD, "D");
+        }catch (Exception error){
+            System.out.println("Error reading files from the files : " + error.getMessage());
+            updateFileStatus("File reading error", Color.RED);
+        }
+    }
+
 
     private void buildJunctionUI() {
         // Background
