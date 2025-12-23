@@ -30,14 +30,14 @@ public class TrafficGenerator {
     private final double centerY;
 
     // Store waiting cars for each lane
-    private final List<Rectangle> waitingCarsA = new ArrayList<>();
+    private final List<Rectangle> waitingCarsA_L1 = new ArrayList<>();
     private final List<Rectangle> waitingCarsA_L2 = new ArrayList<>();
     private final List<Rectangle> waitingCarsA_L3 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsB = new ArrayList<>();
+    private final List<Rectangle> waitingCarsB_L1 = new ArrayList<>();
     private final List<Rectangle> waitingCarsB_L2 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsC = new ArrayList<>();
+    private final List<Rectangle> waitingCarsC_L1 = new ArrayList<>();
     private final List<Rectangle> waitingCarsC_L3 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsD = new ArrayList<>();
+    private final List<Rectangle> waitingCarsD_L1 = new ArrayList<>();
     private final List<Rectangle> waitingCarsD_L3 = new ArrayList<>();
 
     public TrafficGenerator(Lane laneA, Lane laneB, Lane laneC, Lane laneD,
@@ -60,7 +60,7 @@ public class TrafficGenerator {
         //AL2 - Priority Lane
         if (random.nextDouble() < 0.25) {
             laneA.enqueueToLane(2, "A2-" + System.currentTimeMillis() % 1000);
-            addWaitingCar("A");
+            addWaitingCar("A",2);
         }
         if (random.nextDouble() < 0.35) {
             laneB.enqueueToLane(1,"B1-" + System.currentTimeMillis() % 1000);
