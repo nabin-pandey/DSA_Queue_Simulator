@@ -5,12 +5,6 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
- * This program runs independently and writes vehicle data to lane files:
- * - lanea.txt (Road A vehicles - L1, L2, L3)
- * - laneb.txt (Road B vehicles - L1, L3)
- * - lanec.txt (Road C vehicles - L1, L3)
- * - laned.txt (Road D vehicles - L1, L3)
- *
  * File Format per line:
  * VEHICLE_ID,LANE_NUMBER,TIMESTAMP
  *
@@ -55,16 +49,17 @@ public class TrafficGeneratorProcess {
             System.out.println("\n\n Traffic Generator shutting down...");
         }));
 
-        // Main generation loop
-        int cycleCount = 0;
+        // Main loop
+        int cycle = 0;
         while (running) {
             try {
-                cycleCount++;
-                System.out.println("\n Cycle " + cycleCount );
+                cycle++;
+                System.out.println("\n--- Cycle " + cycle + " ---");
 
+                // Generate 1-2 vehicles per cycle
                 generateTraffic();
 
-                // Generate new vehicles every 2.5 seconds (matching simulator)
+                // Generate new vehicles every 2.5 seconds
                 TimeUnit.MILLISECONDS.sleep(2500);
 
             } catch (InterruptedException e) {
@@ -86,114 +81,75 @@ public class TrafficGeneratorProcess {
      * Roads B,C,D: L1 (normal), L3 (left-turn)
      */
     private static void generateTraffic() {
-        long timestamp = System.currentTimeMillis();
+        long time = System.currentTimeMillis();
+        int generated = 0;
 
-        // ROAD A (Has Priority Lane AL2)
-
-        // AL1 - Normal incoming lane (straight/right)
-        if (random.nextDouble() < 0.35) {
-            String vehicleId = "A1-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_A_FILE, vehicleId, 1, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road A, Lane 1 (Normal)");
-        }
-
-        // AL2 - PRIORITY incoming lane (straight/right)
-        if (random.nextDouble() < 0.25) {
-            String vehicleId = "A2-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_A_FILE, vehicleId, 2, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road A, Lane 2 (PRIORITY)");
-        }
-
-        // AL3 - Left-turn ONLY lane
-        if (random.nextDouble() < 0.15) {
-            String vehicleId = "A3-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_A_FILE, vehicleId, 3, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road A, Lane 3 (Left-turn)");
-        }
-
-//          ROAD B
-            // BL1 - Normal incoming lane
-        if (random.nextDouble() < 0.35) {
-            String vehicleId = "B1-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_B_FILE, vehicleId, 1, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road B, Lane 1 (Normal)");
-        }
-
-        // BL3 - Left-turn ONLY lane
-        if (random.nextDouble() < 0.15) {
-            String vehicleId = "B3-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_B_FILE, vehicleId, 3, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road B, Lane 3 (Left-turn)");
-        }
-
-        //  ROAD C
-
-        // CL1 - Normal incoming lane
-        if (random.nextDouble() < 0.4) {
-            String vehicleId = "C1-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_C_FILE, vehicleId, 1, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road C, Lane 1 (Normal)");
-        }
-
-        // CL3 - Left-turn ONLY lane
-        if (random.nextDouble() < 0.15) {
-            String vehicleId = "C3-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_C_FILE, vehicleId, 3, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road C, Lane 3 (Left-turn)");
-        }
-
-        //Road D
-
-        // DL1 - Normal incoming lane
+        // Road A
         if (random.nextDouble() < 0.3) {
-            String vehicleId = "D1-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_D_FILE, vehicleId, 1, timestamp);
-            System.out.println("Generated: " + vehicleId + " → Road D, Lane 1 (Normal)");
+            writeVehicle(LANE_A_FILE, "A1-" + (time % 10000), 1, time);
+            generated++;
+        }
+        if (random.nextDouble() < 0.2) {
+            writeVehicle(LANE_A_FILE, "A2-" + (time % 10000), 2, time);
+            generated++;
+        }
+        if (random.nextDouble() < 0.15) {
+            writeVehicle(LANE_A_FILE, "A3-" + (time % 10000), 3, time);
+            generated++;
         }
 
-        // DL3 - Left-turn ONLY lane
-        if (random.nextDouble() < 0.15) {
-            String vehicleId = "D3-" + (timestamp % 10000);
-            writeVehicleToFile(LANE_D_FILE, vehicleId, 3, timestamp);
-            System.out.println(" Generated: " + vehicleId + " → Road D, Lane 3 (Left-turn)");
+        // Road B
+        if (random.nextDouble() < 0.25) {
+            writeVehicle(LANE_B_FILE, "B1-" + (time % 10000), 1, time);
+            generated++;
+        }
+        if (random.nextDouble() < 0.1) {
+            writeVehicle(LANE_B_FILE, "B3-" + (time % 10000), 3, time);
+            generated++;
+        }
+
+        // Road C
+        if (random.nextDouble() < 0.25) {
+            writeVehicle(LANE_C_FILE, "C1-" + (time % 10000), 1, time);
+            generated++;
+        }
+        if (random.nextDouble() < 0.1) {
+            writeVehicle(LANE_C_FILE, "C3-" + (time % 10000), 3, time);
+            generated++;
+        }
+
+        // Road D
+        if (random.nextDouble() < 0.2) {
+            writeVehicle(LANE_D_FILE, "D1-" + (time % 10000), 1, time);
+            generated++;
+        }
+        if (random.nextDouble() < 0.1) {
+            writeVehicle(LANE_D_FILE, "D3-" + (time % 10000), 3, time);
+            generated++;
+        }
+
+        if (generated > 0) {
+            System.out.println("Generated " + generated + " vehicles");
         }
     }
 
-    /**
-     * Write vehicle data to lane file
-     * Format: VEHICLE_ID,LANE_NUMBER,TIMESTAMP
-     */
-    private static void writeVehicleToFile(String filename, String vehicleId, int laneNumber, long timestamp) {
-        try (FileWriter fw = new FileWriter(filename, true);
-             BufferedWriter bw = new BufferedWriter(fw);
-             PrintWriter out = new PrintWriter(bw)) {
-
-            // Write in CSV format: vehicleId,laneNumber,timestamp
-            out.println(vehicleId + "," + laneNumber + "," + timestamp);
-
+    private static synchronized void writeVehicle(String file, String id, int lane, long time) {
+        try (FileWriter fw = new FileWriter(file, true);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+            bw.write(id + "," + lane + "," + time);
+            bw.newLine();
+            System.out.println("  " + id + " -> L" + lane);
         } catch (IOException e) {
-            System.err.println("Error writing to " + filename + ": " + e.getMessage());
+            System.err.println("Error writing to " + file);
         }
     }
 
     //Clear all lane files on startup
 
     private static void clearLaneFiles() {
-        clearFile(LANE_A_FILE);
-        clearFile(LANE_B_FILE);
-        clearFile(LANE_C_FILE);
-        clearFile(LANE_D_FILE);
-        System.out.println(" Cleared all lane files\n");
-    }
-
-
-     // Clear a single file
-
-    private static void clearFile(String filename) {
-        try (FileWriter fw = new FileWriter(filename, false)) {
-            // Opening with append=false clears the file
-        } catch (IOException e) {
-            System.err.println("Warning: Could not clear " + filename);
-        }
+        new File(LANE_A_FILE).delete();
+        new File(LANE_B_FILE).delete();
+        new File(LANE_C_FILE).delete();
+        new File(LANE_D_FILE).delete();
     }
 }

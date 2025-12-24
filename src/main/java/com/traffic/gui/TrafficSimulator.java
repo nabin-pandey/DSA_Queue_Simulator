@@ -17,10 +17,9 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import com.traffic.gui.TrafficLight;
+import java.util.HashMap;
+import java.util.Map;
 import java.io.*;
-import java.util.*;
-import java.nio.file.* ;
 
 public class TrafficSimulator extends Application {
 
@@ -31,45 +30,23 @@ public class TrafficSimulator extends Application {
     private static final int LIGHT_SIZE = 10;
     private static final int ROAD_LENGTH = 300;
 
-    //Traffic Light wrapper
-    private TrafficLight trafficLightA ;
-    private TrafficLight trafficLightB ;
-    private TrafficLight trafficLightC ;
-    private TrafficLight trafficLightD ;
 
+    //Wrappers for the TrafficLights
+    private TrafficLight trafficLightA, trafficLightB, trafficLightC, trafficLightD;
+    private Circle lightA, lightB, lightC, lightD;
 
-    // Traffic Light Circles
-    private Circle lightA;
-    private Circle lightB;
-    private Circle lightC;
-    private Circle lightD;
-
-    // Lane Objects
-    private Lane laneA;
-    private Lane laneB;
-    private Lane laneC;
-    private Lane laneD;
-
-    private LaneEntry laneEntryA;
-    private LaneEntry laneEntryB;
-    private LaneEntry laneEntryC;
-    private LaneEntry laneEntryD;
-
+    //Lane , LaneEntry
+    private Lane laneA, laneB, laneC, laneD;
+    private LaneEntry laneEntryA, laneEntryB, laneEntryC, laneEntryD;
     private TrafficScheduler trafficScheduler;
 
-    // Displaying counts
-    private Text countA;
-    private Text countB;
-    private Text countC;
-    private Text countD;
-    private Text fileStatusText;
+    //Display Counts
+    private Text countA, countB, countC, countD, fileStatusText;
 
-    // Counters for passed cars
-    private int passedCountA = 0;
-    private int passedCountB = 0;
-    private int passedCountC = 0;
-    private int passedCountD = 0;
-    private int passedPriorityA = 0 ; //for the count of the priority lane
+    private int passedCountA_L1 = 0, passedCountA_L2 = 0, passedCountA_L3 = 0;
+    private int passedCountB_L1 = 0, passedCountB_L3 = 0;
+    private int passedCountC_L1 = 0, passedCountC_L3 = 0;
+    private int passedCountD_L1 = 0, passedCountD_L3 = 0;
 
     // UI components
     private Pane root;
@@ -77,25 +54,27 @@ public class TrafficSimulator extends Application {
     private double centerY;
     private final Pane simulationPane = new Pane();
 
-    //Generate random numbers
+    // Generate random numbers
     private final Random random_generator = new Random();
 
     // Traffic generator
     private TrafficGenerator trafficGenerator;
 
-    //To read the files from the TrafficGenerator.
-    private static final String Lane_A_File = "lanea.txt";
-    private static final String Lane_B_File = "laneb.txt";
-    private static final String Lane_C_File = "lanec.txt";
-    private static final String Lane_D_File = "laned.txt";
+    // File reading
+    private static final String LANE_A_FILE = "lanea.txt";
+    private static final String LANE_B_FILE = "laneb.txt";
+    private static final String LANE_C_FILE = "lanec.txt";
+    private static final String LANE_D_FILE = "laned.txt";
 
-    //Read the Files
-    private Map<String, Long> lastReadPositiion = new HashMap<>();
-    private Timeline filePollingTimeline ;
+    // Read the Files
+    private Map<String, Long> lastReadPosition = new HashMap<>();
+    private Timeline filePollingTimeline;
+    private Timeline simulationTimeline;
 
-    //For Lanes :L
-    private int currentLaneIndex = 0;
-    private static final String[] LANE_ORDER = {"A", "B", "C", "D"};
+    // FIXED: Default to file input mode
+    private boolean useFileInput = true;
+    private boolean simulationRunning = false;
+    private boolean isProcessingCycle = false; // FIXED: Prevent overlapping cycles
 
     public static void main(String[] args) {
         launch(args);
@@ -103,7 +82,6 @@ public class TrafficSimulator extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-
         laneA = new Lane("A");
         laneB = new Lane("B");
         laneC = new Lane("C");
@@ -134,40 +112,60 @@ public class TrafficSimulator extends Application {
 
         buildJunctionUI();
 
-        Button startButton = new Button("Start");
+        // Start button
+        Button startButton = new Button("Start Simulation");
         startButton.setLayoutX(20);
         startButton.setLayoutY(WINDOW_HEIGHT - 60);
         root.getChildren().add(startButton);
 
         startButton.setOnAction(e -> {
-            startButton.setDisable(true);
-            startSimulationLoop();
+            if (!simulationRunning) {
+                startButton.setDisable(true);
+                simulationRunning = true;
+
+                // Start file polling first
+                if (useFileInput) {
+                    startFilePolling();
+                }
+
+                // Then start simulation loop
+                startSimulationLoop();
+            }
         });
 
+        fileStatusText = new Text("Mode: FILE - Waiting to start...");
+        fileStatusText.setLayoutX(20);
+        fileStatusText.setLayoutY(WINDOW_HEIGHT - 30);
+        fileStatusText.setFill(Color.BLUE);
+        root.getChildren().add(fileStatusText);
+
         Scene scene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
-        primaryStage.setTitle("DSA Queue Simulator");
+        primaryStage.setTitle("Traffic Simulator with File Input");
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        //Inititating the reading of the position
+        // Initialize the reading positions
+        lastReadPosition.put(LANE_A_FILE, 0L);
+        lastReadPosition.put(LANE_B_FILE, 0L);
+        lastReadPosition.put(LANE_C_FILE, 0L);
+        lastReadPosition.put(LANE_D_FILE, 0L);
 
-        lastReadPositiion.put(Lane_A_File, 0L);
-        lastReadPositiion.put(Lane_B_File, 0L);
-        lastReadPositiion.put(Lane_C_File, 0L);
-        lastReadPositiion.put(Lane_D_File, 0L);
-
-        System.out.println("Traffic Simulator Started : ");
-        System.out.println("Reading the files : ");
-        System.out.println(" - "+Lane_A_File);
-        System.out.println(" - "+Lane_B_File);
-        System.out.println(" - "+Lane_C_File);
-        System.out.println(" - "+Lane_D_File);
+        System.out.println("========================================");
+        System.out.println("Traffic Simulator Started (FILE MODE)");
+        System.out.println("Run TrafficGeneratorProcess.java first!");
+        System.out.println("========================================");
     }
 
+    //Fixed the file polling to increase the responsiveness
     private void startFilePolling() {
-        filePollingTimeline = new Timeline(new KeyFrame(Duration.millis(500), e -> {
-            //From the Generator files to Simulator
-            readNewVehicles();
+        if (filePollingTimeline != null) {
+            filePollingTimeline.stop();
+        }
+
+        filePollingTimeline = new Timeline(new KeyFrame(Duration.millis(300), e -> {
+            if (useFileInput && simulationRunning) {
+                readNewVehicles();
+            }
         }));
         filePollingTimeline.setCycleCount(Timeline.INDEFINITE);
         filePollingTimeline.play();
@@ -175,72 +173,83 @@ public class TrafficSimulator extends Application {
     }
 
     private void readNewVehicles() {
+        if (!useFileInput || !simulationRunning) return;
+
         try {
-            readVehicles(Lane_A_File, laneA, "A");
-            readVehicles(Lane_B_File, laneB, "B");
-            readVehicles(Lane_C_File, laneC, "C");
-            readVehicles(Lane_D_File, laneD, "D");
-        }catch (Exception error){
-            System.out.println("Error reading files from the files : " + error.getMessage());
-            updateFileStatus("File reading error", Color.RED);
+            int totalRead = 0;
+            totalRead += readVehicles(LANE_A_FILE, laneA, "A");
+            totalRead += readVehicles(LANE_B_FILE, laneB, "B");
+            totalRead += readVehicles(LANE_C_FILE, laneC, "C");
+            totalRead += readVehicles(LANE_D_FILE, laneD, "D");
+
+            if (totalRead > 0) {
+                updateCount();
+            }
+        } catch (Exception error) {
+            System.err.println("Error reading files: " + error.getMessage());
         }
     }
 
-    private void readVehicles(String filename, Lane lane ,String roadId){
-        File file = new  File(filename);
-        if(!file.exists()){
-            return ;
-        }
-        try(RandomAccessFile random_file = new RandomAccessFile(file, "r")){
-            long fileLength = random_file.length();
-            long lastPosition = lastReadPositiion.getOrDefault(filename, 0L);
+    private int readVehicles(String filename, Lane lane, String roadId) {
+        File file = new File(filename);
+        if (!file.exists()) return 0;
 
-            //For the case when the file gets cleated or reset.
-            if(lastPosition > fileLength){
-                lastPosition = 0L ;
+        int vehiclesRead = 0;
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            long fileLength = raf.length();
+            long lastPosition = lastReadPosition.getOrDefault(filename, 0L);
+
+            if (lastPosition > fileLength) lastPosition = 0L;
+            if (lastPosition == fileLength) return 0;
+
+            raf.seek(lastPosition);
+            String line;
+
+            while ((line = raf.readLine()) != null) {
+                if (processVehicleLine(line, lane, roadId)) {
+                    vehiclesRead++;
+                }
             }
-            //It will be for the seeking of the last read position
-            random_file.seek(lastPosition);
 
-            String line ;
-            while((line = random_file.readLine()) != null){
-                processVehicleLine(line, lane, roadId);
-            }
-
-            //Will update the last read Position in the file
-            lastReadPositiion.put(filename, random_file.getFilePointer());
-
+            lastReadPosition.put(filename, raf.getFilePointer());
         } catch (IOException e) {
-            System.err.println("Error reading files from the files : " + e.getMessage());
+            System.err.println("Error reading " + filename);
         }
+        return vehiclesRead;
     }
 
-    private void processVehicleLine(String line, Lane lane, String roadId){
-        try{
+    private boolean processVehicleLine(String line, Lane lane, String roadId) {
+        try {
             String[] parts = line.split(",");
-            if(parts.length != 3){
-                System.err.println("Invalid Line format : "+line);
-                return;
-            }
+            if (parts.length != 3) return false;
 
             String vehicleId = parts[0].trim();
             int laneNumber = Integer.parseInt(parts[1].trim());
             long timestamp = Long.parseLong(parts[2].trim());
 
-            //Will add the vehilce in the proper Lane
-            lane.enqueueToLane(laneNumber , vehicleId);
+            // Add the vehicle to the proper lane
+            lane.enqueueToLane(laneNumber, vehicleId);
 
-            trafficGenerator.addWaitingCar(roadId , laneNumber);
+            // Add visual waiting car
+            trafficGenerator.addWaitingCar(roadId, laneNumber);
 
-            String laneType = laneNumber == 1 ? "Normal" : (laneNumber == 2 ? "Priority" : "LeftTurn");
+            System.out.println("File: " + vehicleId + " → " + roadId + " L" + laneNumber);
+            updateFileStatus("Last: " + vehicleId, Color.GREEN);
+            return true;
 
-            System.out.println("Read from the file : " + vehicleId + "Lane" + laneNumber);
-
-            updateFileStatus("Last Read : " + vehicleId + "lane" + laneNumber, Color.GREEN);
         } catch (Exception e) {
-            System.err.println("Error processing line : " + line +"-"+ e.getMessage());
+            System.err.println("Error processing line: " + line);
+            return false;
         }
     }
+
+    private void updateFileStatus(String message, Color color) {
+        Platform.runLater(() -> {
+            fileStatusText.setText("Mode: FILE | " + message);
+            fileStatusText.setFill(color);
+        });
+    }
+
     private void buildJunctionUI() {
         // Background
         Rectangle background = new Rectangle(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -291,13 +300,6 @@ public class TrafficSimulator extends Application {
         roadD.setFill(Color.web("#3f3f3f"));
         root.getChildren().add(roadD);
 
-        // Junction overlay
-        Rectangle junctionOverlay = new Rectangle(JUNCTION_SIZE, JUNCTION_SIZE);
-        junctionOverlay.setX(centerX - JUNCTION_SIZE / 2.0);
-        junctionOverlay.setY(centerY - JUNCTION_SIZE / 2.0);
-        junctionOverlay.setFill(Color.web("#4b4b4b"));
-        root.getChildren().add(junctionOverlay);
-
         // Lane markings
         drawLaneMarkingsForVerticalRoad(centerX - roadThickness / 2.0, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH,
                 roadThickness, ROAD_LENGTH);
@@ -317,12 +319,11 @@ public class TrafficSimulator extends Application {
         lightD = new Circle(centerX - JUNCTION_SIZE / 2.0 - 20, centerY + (LANE_WIDTH) / 2.0, LIGHT_SIZE, Color.RED);
         root.getChildren().addAll(lightA, lightB, lightC, lightD);
 
-        //Fixed : Initializaton of Traffic :
+        // Initialize Traffic Lights
         trafficLightA = new TrafficLight(lightA);
         trafficLightB = new TrafficLight(lightB);
         trafficLightC = new TrafficLight(lightC);
         trafficLightD = new TrafficLight(lightD);
-
 
         // Labels
         Text LabelA = new Text(centerX - 12, centerY - ROAD_LENGTH - LANE_WIDTH / 2.0 + 8, "Road A");
@@ -332,10 +333,14 @@ public class TrafficSimulator extends Application {
         root.getChildren().addAll(LabelA, LabelB, LabelC, LabelD);
 
         // Count displays
-        countA = new Text(centerX - 60, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 20, "Queue:0 | Passed:0");
-        countB = new Text(centerX - 60, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 6, "Queue:0 | Passed:0");
-        countC = new Text(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 100, centerY - 35, "Queue:0 | Passed:0");
-        countD = new Text(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 10, centerY - 35, "Queue:0 | Passed:0");
+        countA = new Text(centerX - 80, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 30,
+                "L1:0 L2:0 L3:0");
+        countB = new Text(centerX - 80, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 10,
+                "L1:0 L3:0");
+        countC = new Text(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 100, centerY - 20,
+                "L1:0 L3:0");
+        countD = new Text(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 20, centerY - 20,
+                "L1:0 L3:0");
 
         root.getChildren().addAll(countA, countB, countC, countD);
 
@@ -343,12 +348,213 @@ public class TrafficSimulator extends Application {
         root.getChildren().add(simulationPane);
     }
 
-    private void updateFileStatus(String message, Color color) {
+    private void startSimulationLoop() {
+        if (simulationTimeline != null) {
+            simulationTimeline.stop();
+        }
+
+        simulationTimeline = new Timeline(new KeyFrame(Duration.seconds(4), e -> {
+            if (!simulationRunning || isProcessingCycle) return;
+
+            processTrafficCycle();
+        }));
+
+        simulationTimeline.setCycleCount(Timeline.INDEFINITE);
+        simulationTimeline.play();
+    }
+
+    // FIXED: Separate method for processing traffic cycle
+    private void processTrafficCycle() {
+        isProcessingCycle = true;
+
+        laneEntryA.setVehicleCount(laneA.incomingSize());
+        laneEntryB.setVehicleCount(laneB.incomingSize());
+        laneEntryC.setVehicleCount(laneC.incomingSize());
+        laneEntryD.setVehicleCount(laneD.incomingSize());
+
+        trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize(), laneA.prioritySize());
+        trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize(), 0);
+        trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(), 0);
+        trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize(), 0);
+
+        String next = trafficScheduler.serverAndRotateLane();
+
+        System.out.println("\n=== Serving Lane: " + next + " ===");
+        System.out.println("Queue sizes - A(L1:" + laneA.incomingSize() + " L2:" + laneA.prioritySize() + " L3:" + laneA.leftTurnSize() + ")");
+        System.out.println("                B(L1:" + laneB.incomingSize() + " L3:" + laneB.leftTurnSize() + ")");
+        System.out.println("                C(L1:" + laneC.incomingSize() + " L3:" + laneC.leftTurnSize() + ")");
+        System.out.println("                D(L1:" + laneD.incomingSize() + " L3:" + laneD.leftTurnSize() + ")");
+
+            // Set all lights to red
+            trafficLightA.setState(TrafficLight.State.RED);
+            trafficLightB.setState(TrafficLight.State.RED);
+            trafficLightC.setState(TrafficLight.State.RED);
+            trafficLightD.setState(TrafficLight.State.RED);
+
+            TrafficLight currentTrafficLight = null;
+            Lane currentLane = null;
+
+            String trimmedNext = next.trim();
+
+            switch (trimmedNext) {
+                case "A": currentTrafficLight = trafficLightA; currentLane = laneA; break;
+                case "B": currentTrafficLight = trafficLightB; currentLane = laneB; break;
+                case "C": currentTrafficLight = trafficLightC; currentLane = laneC; break;
+                case "D": currentTrafficLight = trafficLightD; currentLane = laneD; break;
+            }
+
+            final String finalLaneName = trimmedNext;
+            final Lane finalCurrentLane = currentLane;
+
+        if (currentTrafficLight != null && currentLane != null) {
+            // FIXED: Delay green light slightly for visual clarity
+            final TrafficLight finalTrafficLight = currentTrafficLight;
+
+            Timeline greenLightDelay = new Timeline(new KeyFrame(Duration.millis(300), e1 -> {
+                finalTrafficLight.setState(TrafficLight.State.GREEN);
+
+                int carsToServe;
+                boolean servingPriorityLane = false;
+
+                // Check if we should serve AL2 priority lane
+                if (finalLaneName.equals("A") && finalCurrentLane.prioritySize() > 0 &&
+                        trafficScheduler.isPriorityModeActive()) {
+                    carsToServe = Math.min(finalCurrentLane.prioritySize(), 3);
+                    servingPriorityLane = true;
+                    System.out.println("SERVING PRIORITY LANE AL2! Cars: " + carsToServe);
+                } else {
+                    List<LaneEntry> entries = new ArrayList<>();
+                    entries.add(laneEntryA);
+                    entries.add(laneEntryB);
+                    entries.add(laneEntryC);
+                    entries.add(laneEntryD);
+                    int avgVehicles = trafficScheduler.calculateAverageVehicles(entries);
+                    carsToServe = Math.max(1, Math.min(avgVehicles,
+                            finalCurrentLane.incomingSize() + finalCurrentLane.leftTurnSize()));
+                    System.out.println("Average vehicles: " + avgVehicles + " | Serving: " + carsToServe);
+                }
+
+                final boolean isServingPriority = servingPriorityLane;
+
+                // Calculate cars to serve from each lane
+                int carsFromL1 = 0, carsFromL2 = 0, carsFromL3 = 0;
+
+                if (isServingPriority && finalLaneName.equals("A")) {
+                    // Serve from AL2 Lane
+                    carsFromL2 = Math.min(carsToServe, finalCurrentLane.prioritySize());
+                } else {
+                    // Distribute across L1 and L3
+                    int l1Available = finalCurrentLane.incomingSize();
+                    int l3Available = finalCurrentLane.leftTurnSize();
+
+                    carsFromL1 = Math.min(carsToServe / 2, l1Available);
+                    carsFromL3 = Math.min(carsToServe - carsFromL1, l3Available);
+
+                    // If no L3 cars, serve all from L1
+                    if (carsFromL3 == 0 && carsFromL1 < carsToServe) {
+                        carsFromL1 = Math.min(carsToServe, l1Available);
+                    }
+                }
+
+                System.out.println("Serving L1=" + carsFromL1 + " L2=" + carsFromL2 + " L3=" + carsFromL3);
+
+                // FIXED: Stagger car releases for smooth animation
+                int totalCars = carsFromL1 + carsFromL2 + carsFromL3;
+                int carIndex = 0;
+
+                // Serve from Lane 2 (priority)
+                for (int i = 0; i < carsFromL2; i++) {
+                    String served = finalCurrentLane.dequeueFromPriority();
+                    if (served != null) {
+                        passedCountA_L2++;
+                        System.out.println("Served from AL2: " + served);
+
+                        final int delay = carIndex * 700;
+                        carIndex++;
+
+                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
+                            trafficGenerator.releaseWaitingCars(finalLaneName, 2, 1);
+                            trafficGenerator.createAndAnimateCar(finalLaneName, 2);
+                        }));
+                        carTimeline.play();
+                    }
+                }
+
+                // Serve from Lane 1
+                for (int i = 0; i < carsFromL1; i++) {
+                    String served = finalCurrentLane.dequeueFromIncoming();
+                    if (served != null) {
+                        switch (finalLaneName) {
+                            case "A": passedCountA_L1++; break;
+                            case "B": passedCountB_L1++; break;
+                            case "C": passedCountC_L1++; break;
+                            case "D": passedCountD_L1++; break;
+                        }
+                        System.out.println("Served from L1: " + served);
+
+                        final int delay = carIndex * 700;
+                        carIndex++;
+
+                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
+                            trafficGenerator.createAndAnimateCar(finalLaneName, 1);
+                        }));
+                        carTimeline.play();
+                    }
+                }
+
+                // Serve from Lane 3
+                for (int i = 0; i < carsFromL3; i++) {
+                    String served = finalCurrentLane.dequeueFromLeftTurn();
+                    if (served != null) {
+                        switch (finalLaneName) {
+                            case "A": passedCountA_L3++; break;
+                            case "B": passedCountB_L3++; break;
+                            case "C": passedCountC_L3++; break;
+                            case "D": passedCountD_L3++; break;
+                        }
+                        System.out.println("Served from L3: " + served);
+
+                        final int delay = carIndex * 700;
+                        carIndex++;
+
+                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
+                            trafficGenerator.createAndAnimateCar(finalLaneName, 3);
+                        }));
+                        carTimeline.play();
+                    }
+                }
+
+                // FIXED: Green light duration based on actual cars served
+                int greenDuration = 1500 + (totalCars * 600);
+
+                // Green to yellow to red transition
+                Timeline transitionTimeline = new Timeline(new KeyFrame(Duration.millis(greenDuration), e2 -> {
+                    finalTrafficLight.setState(TrafficLight.State.YELLOW);
+                    Timeline yellowTimeline = new Timeline(new KeyFrame(Duration.millis(700), e3 -> {
+                        finalTrafficLight.setState(TrafficLight.State.RED);
+                    }));
+                    yellowTimeline.play();
+                }));
+                transitionTimeline.play();
+
+                updateCount();
+            }));
+            greenLightDelay.play();
+        } else {
+            isProcessingCycle = false;
+        }
+    }
+
+    private void updateCount() {
         Platform.runLater(() -> {
-            fileStatusText.setText(message);
-            fileStatusText.setFill(color);
+            countA.setText("L1:" + laneA.incomingSize() + " L2:" + laneA.prioritySize() + " L3:" + laneA.leftTurnSize());
+            countB.setText("L1:" + laneB.incomingSize() + " L3:" + laneB.leftTurnSize());
+            countC.setText("L1:" + laneC.incomingSize() + " L3:" + laneC.leftTurnSize());
+            countD.setText("L1:" + laneD.incomingSize() + " L3:" + laneD.leftTurnSize());
         });
     }
+
+    // Helper methods for UI
     private Rectangle makeGrass(double x, double y, double w, double h) {
         Rectangle r = new Rectangle(w, h);
         r.setX(x);
@@ -430,207 +636,4 @@ public class TrafficSimulator extends Application {
             root.getChildren().add(stripe);
         }
     }
-
-    private void startSimulationLoop() {
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(2.5), e -> {
-
-            // Generate traffic using TrafficGenerator
-            trafficGenerator.generateRandomTraffic();
-
-            updateCount();
-
-            //  lane serving: A -> B -> C -> D
-            laneEntryA.setVehicleCount(laneA.incomingSize());
-            laneEntryB.setVehicleCount(laneB.incomingSize());
-            laneEntryC.setVehicleCount(laneC.incomingSize());
-            laneEntryD.setVehicleCount(laneD.incomingSize());
-
-// Update priority based on current counts
-            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize(), laneA.prioritySize());
-            trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize(),0);
-            trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(),0);
-            trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize(),0);
-
-
-
-// Get the next lane to serve based on priority
-            String next = trafficScheduler.serverAndRotateLane();
-            if (next == null || next.contains("No lanes")) {
-                next = LANE_ORDER[currentLaneIndex % 4];
-                currentLaneIndex++;
-                System.out.println("Using fallback rotation: " + next);
-            }
-
-            System.out.println("\nScheduler selected lane " + next + " Queue: A=" + laneA.incomingSize() +
-                    " B=" + laneB.incomingSize() + " C=" + laneC.incomingSize() +
-                    " D=" + laneD.incomingSize()  );
-
-            // Set all lights to red
-            trafficLightA.setState(TrafficLight.State.RED);
-            trafficLightB.setState(TrafficLight.State.RED);
-            trafficLightC.setState(TrafficLight.State.RED);
-            trafficLightD.setState(TrafficLight.State.RED);
-
-           TrafficLight currentTrafficLight = null ;
-            Lane currentLane = null;
-
-            String trimmedNext = next.trim();
-
-            if (trimmedNext.equals("A")) {
-                currentTrafficLight = trafficLightA;
-                currentLane = laneA;
-            } else if (trimmedNext.equals("B")) {
-                currentTrafficLight = trafficLightB;
-                currentLane = laneB;
-            } else if (trimmedNext.equals("C")) {
-                currentTrafficLight = trafficLightC;
-                currentLane = laneC;
-            } else if (trimmedNext.equals("D")) {
-                currentTrafficLight = trafficLightD;
-                currentLane = laneD;
-            }
-
-            final String finalLaneName = trimmedNext;
-            final Lane finalCurrentLane = currentLane;
-
-            if (currentTrafficLight != null && currentLane != null) {
-                currentTrafficLight.setState(TrafficLight.State.GREEN);
-
-                final TrafficLight finalTrafficLight = currentTrafficLight;
-                int carsToServe;
-                boolean servingPriorityLane = false;
-                // FIXED: Check if we should serve AL2 priority lane
-                if (finalLaneName.equals("A") && finalCurrentLane.prioritySize() > 0 &&
-                        trafficScheduler.isPriorityModeActive()) {
-                    // Serve from AL2 until it drops below 5
-                    carsToServe = Math.min(finalCurrentLane.prioritySize(), 6);
-                    servingPriorityLane = true;
-                    System.out.println("SERVING PRIORITY LANE AL2! Cars: " + carsToServe);
-
-                }
-                // FIXED: Use formula |V| = avg vehicles across lanen
-                else {
-                    List<LaneEntry> entries = new ArrayList<>();
-                    entries.add(laneEntryA);
-                    entries.add(laneEntryB);
-                    entries.add(laneEntryC);
-                    entries.add(laneEntryD);
-                    int avgVehicles = trafficScheduler.calculateAverageVehicles(entries);
-                    carsToServe = Math.max(1, Math.min(avgVehicles, finalCurrentLane.incomingSize()));
-                    System.out.println("Average vehicles: " + avgVehicles + " | Serving: " + carsToServe);
-                }
-                final boolean isServingPriority = servingPriorityLane;
-                trafficGenerator.releaseWaitingCars(finalLaneName , 3 , 1);
-
-                //Fixing the generation of car from the all 3lanes
-                int carsFromL1 = 0, carsFromL2 = 0 , carsFromL3 = 0;
-
-                if(isServingPriority && finalLaneName.equals("A")){
-                    //Server from AL2 Lane
-                    carsFromL2 = Math.min(carsToServe, finalCurrentLane.prioritySize());
-                }else{
-                    //Generated Incoming cars will be distributed across L1 and L3
-                    int l1Available = finalCurrentLane.incomingSize();
-                    int l3Available = finalCurrentLane.leftTurnSize();
-
-                    //Serve L1
-                    carsFromL1 = Math.min(carsToServe / 2, l1Available);
-                    //ThenL3
-                    carsFromL3 = Math.min(carsToServe - carsFromL1, l3Available);
-                }
-                System.out.println("Serving L1 = " + carsFromL1 + "L2 = "+carsFromL2+"L3 = "+carsFromL3);
-
-                //Release waiting cars virtually
-                if(carsFromL1 > 0) trafficGenerator.releaseWaitingCars(finalLaneName,1, carsFromL1);
-                if(carsFromL2 > 0) trafficGenerator.releaseWaitingCars(finalLaneName,2,carsFromL2);
-                if(carsFromL3 > 0) trafficGenerator.releaseWaitingCars(finalLaneName, 3, carsFromL3);
-
-                int carIndex = 0 ;
-                //This one is for the Lane2 priority
-                for(int i = 0 ; i < carsFromL2 ; i++){
-                    String served = finalCurrentLane.dequeueFromPriority();
-                    if(served != null) {
-                        passedPriorityA++;
-                        System.out.println("Served from AL2 : " + served);
-
-                        final int delay = carIndex * 400;
-                        carIndex++;
-
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.createAndAnimateCar(finalLaneName, 2);
-                        }));
-                        carTimeline.play();
-                    }
-                }
-                //Serve from the Lane 1
-                for (int i = 0 ; i < carsFromL1 ; i++){
-                    String served = finalCurrentLane.dequeueFromIncoming();
-                    if(served != null) {
-                        switch (finalLaneName){
-                            case "A": passedCountA++ ; break ;
-                            case "B" : passedCountB++ ; break ;
-                            case "C" : passedCountC++ ; break ;
-                            case "D" : passedCountD++ ; break ;
-
-                        }
-                        System.out.println("Served from L1 : " + served);
-                        final int delay = carIndex * 400;
-                        carIndex++;
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.createAndAnimateCar(finalLaneName,1);
-                        }));
-                        carTimeline.play();
-                    }
-                }
-
-                //THis is for the Lane 3
-                for (int i = 0 ; i < carsFromL3 ; i++){
-                    String served = finalCurrentLane.dequeueFromleftLane();
-                    if(served != null) {
-                        switch (finalLaneName){
-                            case "A": passedCountA++ ; break ;
-                            case "B" : passedCountB++ ; break ;
-                            case "C" : passedCountC++ ; break ;
-                            case "D" : passedCountD++ ; break ;
-
-                        }
-                        System.out.println("Served from L3 : " + served);
-                        final int delay = carIndex * 400;
-                        carIndex++;
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.createAndAnimateCar(finalLaneName,3);
-                        }));
-                        carTimeline.play();
-                    }
-
-
-                    //As there are cars moving green ligght will lit up till that
-                    int greenDuration = 1500 + (carsToServe * 300);
-                    // Green to yellow to red transition
-                    Timeline t = new Timeline(new KeyFrame(Duration.millis(greenDuration), e2 -> {
-                        finalTrafficLight.setState(TrafficLight.State.YELLOW);
-                        new Timeline(new KeyFrame(Duration.millis(700), e3 -> {
-                            finalTrafficLight.setState(TrafficLight.State.RED);
-                        })).play();
-                    }));
-                    t.play();
-                }
-
-                updateCount();
-            }
-        })) ;
-
-        updateCount();
-        timeline.setCycleCount(Timeline.INDEFINITE);
-        timeline.play();
-        }
-
-    private void updateCount() {
-                Platform.runLater(() -> {
-                    countA.setText("AL1:" + laneA.incomingSize() + " | Passed:" + passedCountA);
-                    countB.setText("AL2:" + laneB.incomingSize() + " | Passed:" + passedCountB);
-                    countC.setText("AL3:" + laneC.incomingSize() + " | Passed:" + passedCountC);
-                    countD.setText("AL4:" + laneD.incomingSize() + " | Passed:" + passedCountD);
-                });
-            }
-        }
+}

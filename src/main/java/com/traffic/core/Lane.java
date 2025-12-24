@@ -41,7 +41,7 @@ public class Lane {
         return lane2.dequeue();
     }
 
-    public String dequeueFromleftLane(){
+    public String dequeueFromLeftTurn(){
         return lane3.dequeue();
     }
 
