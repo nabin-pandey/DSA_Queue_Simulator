@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * Lane Numbers:
  * 1 = Normal incoming (straight/right)
  * 2 = Priority incoming (AL2 only - straight/right)
- * 3 = Left-turn only incoming
+  3 = Left-turn only incoming
  */
 
 public class TrafficGeneratorProcess {
@@ -43,7 +43,7 @@ public class TrafficGeneratorProcess {
         System.out.println("  - " + LANE_B_FILE + " (L1, L3)");
         System.out.println("  - " + LANE_C_FILE + " (L1, L3)");
         System.out.println("  - " + LANE_D_FILE + " (L1, L3)");
-        System.out.println("========================================");
+        System.out.println("--------------------------------------------");
         System.out.println("Press Ctrl+C to stop\n");
 
         // Cleanup old files on start

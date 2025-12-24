@@ -41,6 +41,10 @@ public class Lane {
         return lane2.dequeue();
     }
 
+    public String dequeueFromleftLane(){
+        return lane3.dequeue();
+    }
+
 
     //Returning Lane Size
     public int incomingSize(){ return lane1.getSize(); }

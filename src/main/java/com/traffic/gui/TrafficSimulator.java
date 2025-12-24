@@ -446,7 +446,7 @@ public class TrafficSimulator extends Application {
             laneEntryD.setVehicleCount(laneD.incomingSize());
 
 // Update priority based on current counts
-            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize());
+            trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize(), laneA.prioritySize());
             trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize(),0);
             trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(),0);
             trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize(),0);
@@ -520,7 +520,7 @@ public class TrafficSimulator extends Application {
                     System.out.println("Average vehicles: " + avgVehicles + " | Serving: " + carsToServe);
                 }
                 final boolean isServingPriority = servingPriorityLane;
-                trafficGenerator.releaseWaitingCars(finalLaneName, carsToServe);
+                trafficGenerator.releaseWaitingCars(finalLaneName , 3 , 1);
 
                 //Fixing the generation of car from the all 3lanes
                 int carsFromL1 = 0, carsFromL2 = 0 , carsFromL3 = 0;
@@ -585,7 +585,7 @@ public class TrafficSimulator extends Application {
 
                 //THis is for the Lane 3
                 for (int i = 0 ; i < carsFromL3 ; i++){
-                    String served = finalCurrentLane.dequeueFromIncoming();
+                    String served = finalCurrentLane.dequeueFromleftLane();
                     if(served != null) {
                         switch (finalLaneName){
                             case "A": passedCountA++ ; break ;
