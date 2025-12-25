@@ -14,11 +14,7 @@ import javafx.scene.shape.*;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.io.*;
 
 public class TrafficSimulator extends Application {
@@ -92,12 +88,7 @@ public class TrafficSimulator extends Application {
         laneEntryC = new LaneEntry("C", 0);
         laneEntryD = new LaneEntry("D", 0);
 
-        List<LaneEntry> entries = new ArrayList<>();
-        entries.add(laneEntryA);
-        entries.add(laneEntryB);
-        entries.add(laneEntryC);
-        entries.add(laneEntryD);
-
+        List<LaneEntry> entries = Arrays.asList(laneEntryA, laneEntryB, laneEntryC, laneEntryD);
         trafficScheduler = new TrafficScheduler(entries);
 
         root = new Pane();
@@ -122,13 +113,7 @@ public class TrafficSimulator extends Application {
             if (!simulationRunning) {
                 startButton.setDisable(true);
                 simulationRunning = true;
-
-                // Start file polling first
-                if (useFileInput) {
-                    startFilePolling();
-                }
-
-                // Then start simulation loop
+                startFilePolling();
                 startSimulationLoop();
             }
         });
@@ -144,7 +129,7 @@ public class TrafficSimulator extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Initialize the reading positions
+        // Initialize file reading positions
         lastReadPosition.put(LANE_A_FILE, 0L);
         lastReadPosition.put(LANE_B_FILE, 0L);
         lastReadPosition.put(LANE_C_FILE, 0L);
@@ -156,16 +141,20 @@ public class TrafficSimulator extends Application {
         System.out.println("========================================");
     }
 
-    //Fixed the file polling to increase the responsiveness
+    //FIX: Clear old data files
+    private void clearOldFiles() {
+        new File(LANE_A_FILE).delete();
+        new File(LANE_B_FILE).delete();
+        new File(LANE_C_FILE).delete();
+        new File(LANE_D_FILE).delete();
+
+    }
+
     private void startFilePolling() {
-        if (filePollingTimeline != null) {
-            filePollingTimeline.stop();
-        }
+        if (filePollingTimeline != null) filePollingTimeline.stop();
 
         filePollingTimeline = new Timeline(new KeyFrame(Duration.millis(300), e -> {
-            if (useFileInput && simulationRunning) {
-                readNewVehicles();
-            }
+            if (simulationRunning) readNewVehicles();
         }));
         filePollingTimeline.setCycleCount(Timeline.INDEFINITE);
         filePollingTimeline.play();
@@ -181,10 +170,7 @@ public class TrafficSimulator extends Application {
             totalRead += readVehicles(LANE_B_FILE, laneB, "B");
             totalRead += readVehicles(LANE_C_FILE, laneC, "C");
             totalRead += readVehicles(LANE_D_FILE, laneD, "D");
-
-            if (totalRead > 0) {
-                updateCount();
-            }
+            if (totalRead > 0) updateCount();
         } catch (Exception error) {
             System.err.println("Error reading files: " + error.getMessage());
         }
@@ -206,9 +192,7 @@ public class TrafficSimulator extends Application {
             String line;
 
             while ((line = raf.readLine()) != null) {
-                if (processVehicleLine(line, lane, roadId)) {
-                    vehiclesRead++;
-                }
+                if (processVehicleLine(line, lane, roadId)) vehiclesRead++;
             }
 
             lastReadPosition.put(filename, raf.getFilePointer());
@@ -225,15 +209,13 @@ public class TrafficSimulator extends Application {
 
             String vehicleId = parts[0].trim();
             int laneNumber = Integer.parseInt(parts[1].trim());
-            long timestamp = Long.parseLong(parts[2].trim());
 
-            // Add the vehicle to the proper lane
             lane.enqueueToLane(laneNumber, vehicleId);
 
             // Add visual waiting car
             trafficGenerator.addWaitingCar(roadId, laneNumber);
 
-            System.out.println("File: " + vehicleId + " → " + roadId + " L" + laneNumber);
+            System.out.println( vehicleId + "Road " + roadId + " Lane " + laneNumber);
             updateFileStatus("Last: " + vehicleId, Color.GREEN);
             return true;
 
@@ -245,118 +227,16 @@ public class TrafficSimulator extends Application {
 
     private void updateFileStatus(String message, Color color) {
         Platform.runLater(() -> {
-            fileStatusText.setText("Mode: FILE | " + message);
+            fileStatusText.setText("FILE " + message);
             fileStatusText.setFill(color);
         });
     }
-
-    private void buildJunctionUI() {
-        // Background
-        Rectangle background = new Rectangle(WINDOW_WIDTH, WINDOW_HEIGHT);
-        background.setFill(Color.web("#f3f3f3"));
-        root.getChildren().add(background);
-
-        // Grass corners
-        Rectangle grassTopLeft = makeGrass(0, 0, centerX - JUNCTION_SIZE / 2 - 60, centerY - JUNCTION_SIZE / 2 - 60);
-        Rectangle grassTopRight = makeGrass(centerX + JUNCTION_SIZE / 2 + 60, 0,
-                WINDOW_WIDTH - (centerX + JUNCTION_SIZE / 2 + 60), centerY - JUNCTION_SIZE / 2 - 60);
-        Rectangle grassBottomLeft = makeGrass(0, centerY + JUNCTION_SIZE / 2 + 60,
-                centerX - JUNCTION_SIZE / 2 - 60, WINDOW_HEIGHT - (centerY + JUNCTION_SIZE / 2 + 60));
-        Rectangle grassBottomRight = makeGrass(centerX + JUNCTION_SIZE / 2 + 60, centerY + JUNCTION_SIZE / 2 + 60,
-                WINDOW_WIDTH - (centerX + JUNCTION_SIZE / 2 + 60), WINDOW_HEIGHT - (centerY + JUNCTION_SIZE / 2 + 60));
-        root.getChildren().addAll(grassTopLeft, grassTopRight, grassBottomLeft, grassBottomRight);
-
-        // Center junction
-        Rectangle junction = new Rectangle(JUNCTION_SIZE, JUNCTION_SIZE);
-        junction.setX(centerX - JUNCTION_SIZE / 2.0);
-        junction.setY(centerY - JUNCTION_SIZE / 2.0);
-        junction.setFill(Color.web("#4b4b4b"));
-        root.getChildren().add(junction);
-
-        double roadThickness = LANE_WIDTH * 3;
-
-        // Roads
-        Rectangle roadA = new Rectangle(roadThickness, ROAD_LENGTH);
-        roadA.setX(centerX - roadThickness / 2.0);
-        roadA.setY(centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH);
-        roadA.setFill(Color.web("#3f3f3f"));
-        root.getChildren().add(roadA);
-
-        Rectangle roadB = new Rectangle(roadThickness, ROAD_LENGTH);
-        roadB.setX(centerX - roadThickness / 2.0);
-        roadB.setY(centerY + JUNCTION_SIZE / 2.0);
-        roadB.setFill(Color.web("#3f3f3f"));
-        root.getChildren().add(roadB);
-
-        Rectangle roadC = new Rectangle(ROAD_LENGTH, roadThickness);
-        roadC.setX(centerX + JUNCTION_SIZE / 2.0);
-        roadC.setY(centerY - roadThickness / 2.0);
-        roadC.setFill(Color.web("#3f3f3f"));
-        root.getChildren().add(roadC);
-
-        Rectangle roadD = new Rectangle(ROAD_LENGTH, roadThickness);
-        roadD.setX(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH);
-        roadD.setY(centerY - roadThickness / 2.0);
-        roadD.setFill(Color.web("#3f3f3f"));
-        root.getChildren().add(roadD);
-
-        // Lane markings
-        drawLaneMarkingsForVerticalRoad(centerX - roadThickness / 2.0, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH,
-                roadThickness, ROAD_LENGTH);
-        drawLaneMarkingsForVerticalRoad(centerX - roadThickness / 2.0, centerY + JUNCTION_SIZE / 2.0,
-                roadThickness, ROAD_LENGTH);
-        drawLaneMarkingsForHorizontalRoad(centerX + JUNCTION_SIZE / 2.0, centerY - roadThickness / 2.0,
-                ROAD_LENGTH, roadThickness);
-        drawLaneMarkingsForHorizontalRoad(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY - roadThickness / 2.0,
-                ROAD_LENGTH, roadThickness);
-
-        drawAllCrossWalks();
-
-        // Traffic Lights
-        lightA = new Circle(centerX - (LANE_WIDTH) / 2.0, centerY - JUNCTION_SIZE / 2.0 - 20, LIGHT_SIZE, Color.RED);
-        lightB = new Circle(centerX + (LANE_WIDTH) / 2.0, centerY + JUNCTION_SIZE / 2.0 + 20, LIGHT_SIZE, Color.RED);
-        lightC = new Circle(centerX + JUNCTION_SIZE / 2.0 + 20, centerY - (LANE_WIDTH) / 2.0, LIGHT_SIZE, Color.RED);
-        lightD = new Circle(centerX - JUNCTION_SIZE / 2.0 - 20, centerY + (LANE_WIDTH) / 2.0, LIGHT_SIZE, Color.RED);
-        root.getChildren().addAll(lightA, lightB, lightC, lightD);
-
-        // Initialize Traffic Lights
-        trafficLightA = new TrafficLight(lightA);
-        trafficLightB = new TrafficLight(lightB);
-        trafficLightC = new TrafficLight(lightC);
-        trafficLightD = new TrafficLight(lightD);
-
-        // Labels
-        Text LabelA = new Text(centerX - 12, centerY - ROAD_LENGTH - LANE_WIDTH / 2.0 + 8, "Road A");
-        Text LabelB = new Text(centerX - 12, centerY + ROAD_LENGTH + LANE_WIDTH, "Road B");
-        Text LabelC = new Text(centerX + ROAD_LENGTH + LANE_WIDTH / 2.0 - 10, centerY + 4, "Road C");
-        Text LabelD = new Text(centerX - ROAD_LENGTH - LANE_WIDTH + 6, centerY + 4, "Road D");
-        root.getChildren().addAll(LabelA, LabelB, LabelC, LabelD);
-
-        // Count displays
-        countA = new Text(centerX - 80, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 30,
-                "L1:0 L2:0 L3:0");
-        countB = new Text(centerX - 80, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 10,
-                "L1:0 L3:0");
-        countC = new Text(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 100, centerY - 20,
-                "L1:0 L3:0");
-        countD = new Text(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 20, centerY - 20,
-                "L1:0 L3:0");
-
-        root.getChildren().addAll(countA, countB, countC, countD);
-
-        // Add simulation pane last
-        root.getChildren().add(simulationPane);
-    }
-
+    //Simulator
     private void startSimulationLoop() {
-        if (simulationTimeline != null) {
-            simulationTimeline.stop();
-        }
+        if (simulationTimeline != null) simulationTimeline.stop();
 
-        simulationTimeline = new Timeline(new KeyFrame(Duration.seconds(4), e -> {
-            if (!simulationRunning || isProcessingCycle) return;
-
-            processTrafficCycle();
+        simulationTimeline = new Timeline(new KeyFrame(Duration.seconds(6), e -> {
+            if (simulationRunning) processTrafficCycle();
         }));
 
         simulationTimeline.setCycleCount(Timeline.INDEFINITE);
@@ -365,21 +245,21 @@ public class TrafficSimulator extends Application {
 
     // FIXED: Separate method for processing traffic cycle
     private void processTrafficCycle() {
-        isProcessingCycle = true;
-
+        // Update vehicle counts
         laneEntryA.setVehicleCount(laneA.incomingSize());
         laneEntryB.setVehicleCount(laneB.incomingSize());
         laneEntryC.setVehicleCount(laneC.incomingSize());
         laneEntryD.setVehicleCount(laneD.incomingSize());
 
+        // Update priorities
         trafficScheduler.CheckandUpdatePriority(laneEntryA, laneA.incomingSize(), laneA.prioritySize());
         trafficScheduler.CheckandUpdatePriority(laneEntryB, laneB.incomingSize(), 0);
         trafficScheduler.CheckandUpdatePriority(laneEntryC, laneC.incomingSize(), 0);
         trafficScheduler.CheckandUpdatePriority(laneEntryD, laneD.incomingSize(), 0);
 
-        String next = trafficScheduler.serverAndRotateLane();
+        String nextLane = trafficScheduler.serverAndRotateLane().trim();
 
-        System.out.println("\n=== Serving Lane: " + next + " ===");
+        System.out.println("\n=== Serving Lane: " + nextLane + " ===");
         System.out.println("Queue sizes - A(L1:" + laneA.incomingSize() + " L2:" + laneA.prioritySize() + " L3:" + laneA.leftTurnSize() + ")");
         System.out.println("                B(L1:" + laneB.incomingSize() + " L3:" + laneB.leftTurnSize() + ")");
         System.out.println("                C(L1:" + laneC.incomingSize() + " L3:" + laneC.leftTurnSize() + ")");
@@ -391,158 +271,111 @@ public class TrafficSimulator extends Application {
             trafficLightC.setState(TrafficLight.State.RED);
             trafficLightD.setState(TrafficLight.State.RED);
 
-            TrafficLight currentTrafficLight = null;
-            Lane currentLane = null;
+        TrafficLight currentLight = null;
+        Lane currentLane = null;
 
-            String trimmedNext = next.trim();
+        switch (nextLane) {
+            case "A": currentLight = trafficLightA; currentLane = laneA; break;
+            case "B": currentLight = trafficLightB; currentLane = laneB; break;
+            case "C": currentLight = trafficLightC; currentLane = laneC; break;
+            case "D": currentLight = trafficLightD; currentLane = laneD; break;
+        }
 
-            switch (trimmedNext) {
-                case "A": currentTrafficLight = trafficLightA; currentLane = laneA; break;
-                case "B": currentTrafficLight = trafficLightB; currentLane = laneB; break;
-                case "C": currentTrafficLight = trafficLightC; currentLane = laneC; break;
-                case "D": currentTrafficLight = trafficLightD; currentLane = laneD; break;
+        if (currentLight == null || currentLane == null) return;
+
+        final TrafficLight light = currentLight;
+        final Lane lane = currentLane;
+        final String laneName = nextLane;
+
+        // Wait before turning green
+        PauseTransition pause = new PauseTransition(Duration.millis(800));
+        pause.setOnFinished(e -> {
+            light.setState(TrafficLight.State.GREEN);
+
+            // Calculate cars to serve
+            int carsToServe;
+            boolean servingPriority = false;
+
+            if (laneName.equals("A") && lane.prioritySize() > 0 && trafficScheduler.isPriorityModeActive()) {
+                carsToServe = Math.min(3, lane.prioritySize());
+                servingPriority = true;
+                System.out.println(">>> PRIORITY MODE: Serving " + carsToServe + " from AL2");
+            } else {
+                List<LaneEntry> entries = Arrays.asList(laneEntryA, laneEntryB, laneEntryC, laneEntryD);
+                int avg = trafficScheduler.calculateAverageVehicles(entries);
+                int available = lane.incomingSize() + lane.leftTurnSize();
+                carsToServe = Math.min(3, Math.max(1, Math.min(avg, available)));
+                System.out.println("Serving " + carsToServe + " cars");
             }
 
-            final String finalLaneName = trimmedNext;
-            final Lane finalCurrentLane = currentLane;
+            // Distribute cars
+            int carsL1 = 0, carsL2 = 0, carsL3 = 0;
 
-        if (currentTrafficLight != null && currentLane != null) {
-            // FIXED: Delay green light slightly for visual clarity
-            final TrafficLight finalTrafficLight = currentTrafficLight;
+            if (servingPriority) {
+                carsL2 = Math.min(carsToServe, lane.prioritySize());
+            } else {
+                int l1Avail = lane.incomingSize();
+                int l3Avail = lane.leftTurnSize();
+                carsL1 = Math.min(carsToServe / 2, l1Avail);
+                carsL3 = Math.min(carsToServe - carsL1, l3Avail);
+                if (carsL3 == 0) carsL1 = Math.min(carsToServe, l1Avail);
+            }
 
-            Timeline greenLightDelay = new Timeline(new KeyFrame(Duration.millis(300), e1 -> {
-                finalTrafficLight.setState(TrafficLight.State.GREEN);
+            System.out.println("Release: L1=" + carsL1 + " L2=" + carsL2 + " L3=" + carsL3);
 
-                int carsToServe;
-                boolean servingPriorityLane = false;
+            // Release cars with delays
+            int carIndex = 0;
 
-                // Check if we should serve AL2 priority lane
-                if (finalLaneName.equals("A") && finalCurrentLane.prioritySize() > 0 &&
-                        trafficScheduler.isPriorityModeActive()) {
-                    carsToServe = Math.min(finalCurrentLane.prioritySize(), 3);
-                    servingPriorityLane = true;
-                    System.out.println("SERVING PRIORITY LANE AL2! Cars: " + carsToServe);
-                } else {
-                    List<LaneEntry> entries = new ArrayList<>();
-                    entries.add(laneEntryA);
-                    entries.add(laneEntryB);
-                    entries.add(laneEntryC);
-                    entries.add(laneEntryD);
-                    int avgVehicles = trafficScheduler.calculateAverageVehicles(entries);
-                    carsToServe = Math.max(1, Math.min(avgVehicles,
-                            finalCurrentLane.incomingSize() + finalCurrentLane.leftTurnSize()));
-                    System.out.println("Average vehicles: " + avgVehicles + " | Serving: " + carsToServe);
+            // L2 (Priority)
+            for (int i = 0; i < carsL2; i++) {
+                String id = lane.dequeueFromPriority();
+                if (id != null) {
+                    final int delay = carIndex++ * 1000;
+                    new Timeline(new KeyFrame(Duration.millis(delay), ev -> {
+                        trafficGenerator.releaseWaitingCars(laneName, 2, 1);
+                        trafficGenerator.createAndAnimateCar(laneName, 2);
+                    })).play();
                 }
+            }
 
-                final boolean isServingPriority = servingPriorityLane;
-
-                // Calculate cars to serve from each lane
-                int carsFromL1 = 0, carsFromL2 = 0, carsFromL3 = 0;
-
-                if (isServingPriority && finalLaneName.equals("A")) {
-                    // Serve from AL2 Lane
-                    carsFromL2 = Math.min(carsToServe, finalCurrentLane.prioritySize());
-                } else {
-                    // Distribute across L1 and L3
-                    int l1Available = finalCurrentLane.incomingSize();
-                    int l3Available = finalCurrentLane.leftTurnSize();
-
-                    carsFromL1 = Math.min(carsToServe / 2, l1Available);
-                    carsFromL3 = Math.min(carsToServe - carsFromL1, l3Available);
-
-                    // If no L3 cars, serve all from L1
-                    if (carsFromL3 == 0 && carsFromL1 < carsToServe) {
-                        carsFromL1 = Math.min(carsToServe, l1Available);
-                    }
+            // L1
+            for (int i = 0; i < carsL1; i++) {
+                String id = lane.dequeueFromIncoming();
+                if (id != null) {
+                    final int delay = carIndex++ * 1000;
+                    new Timeline(new KeyFrame(Duration.millis(delay), ev -> {
+                        trafficGenerator.releaseWaitingCars(laneName, 1, 1);
+                        trafficGenerator.createAndAnimateCar(laneName, 1);
+                    })).play();
                 }
+            }
 
-                System.out.println("Serving L1=" + carsFromL1 + " L2=" + carsFromL2 + " L3=" + carsFromL3);
-
-                // FIXED: Stagger car releases for smooth animation
-                int totalCars = carsFromL1 + carsFromL2 + carsFromL3;
-                int carIndex = 0;
-
-                // Serve from Lane 2 (priority)
-                for (int i = 0; i < carsFromL2; i++) {
-                    String served = finalCurrentLane.dequeueFromPriority();
-                    if (served != null) {
-                        passedCountA_L2++;
-                        System.out.println("Served from AL2: " + served);
-
-                        final int delay = carIndex * 700;
-                        carIndex++;
-
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.releaseWaitingCars(finalLaneName, 2, 1);
-                            trafficGenerator.createAndAnimateCar(finalLaneName, 2);
-                        }));
-                        carTimeline.play();
-                    }
+            // L3
+            for (int i = 0; i < carsL3; i++) {
+                String id = lane.dequeueFromLeftTurn();
+                if (id != null) {
+                    final int delay = carIndex++ * 1000;
+                    new Timeline(new KeyFrame(Duration.millis(delay), ev -> {
+                        trafficGenerator.releaseWaitingCars(laneName, 3, 1);
+                        trafficGenerator.createAndAnimateCar(laneName, 3);
+                    })).play();
                 }
+            }
 
-                // Serve from Lane 1
-                for (int i = 0; i < carsFromL1; i++) {
-                    String served = finalCurrentLane.dequeueFromIncoming();
-                    if (served != null) {
-                        switch (finalLaneName) {
-                            case "A": passedCountA_L1++; break;
-                            case "B": passedCountB_L1++; break;
-                            case "C": passedCountC_L1++; break;
-                            case "D": passedCountD_L1++; break;
-                        }
-                        System.out.println("Served from L1: " + served);
+            int totalCars = carsL1 + carsL2 + carsL3;
+            int greenDuration = 2000 + (totalCars * 900);
 
-                        final int delay = carIndex * 700;
-                        carIndex++;
+            // Light transition
+            new Timeline(new KeyFrame(Duration.millis(greenDuration), ev -> {
+                light.setState(TrafficLight.State.YELLOW);
+                new Timeline(new KeyFrame(Duration.millis(1200), ev2 -> {
+                    light.setState(TrafficLight.State.RED);
+                })).play();
+            })).play();
 
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.createAndAnimateCar(finalLaneName, 1);
-                        }));
-                        carTimeline.play();
-                    }
-                }
-
-                // Serve from Lane 3
-                for (int i = 0; i < carsFromL3; i++) {
-                    String served = finalCurrentLane.dequeueFromLeftTurn();
-                    if (served != null) {
-                        switch (finalLaneName) {
-                            case "A": passedCountA_L3++; break;
-                            case "B": passedCountB_L3++; break;
-                            case "C": passedCountC_L3++; break;
-                            case "D": passedCountD_L3++; break;
-                        }
-                        System.out.println("Served from L3: " + served);
-
-                        final int delay = carIndex * 700;
-                        carIndex++;
-
-                        Timeline carTimeline = new Timeline(new KeyFrame(Duration.millis(delay), e2 -> {
-                            trafficGenerator.createAndAnimateCar(finalLaneName, 3);
-                        }));
-                        carTimeline.play();
-                    }
-                }
-
-                // FIXED: Green light duration based on actual cars served
-                int greenDuration = 1500 + (totalCars * 600);
-
-                // Green to yellow to red transition
-                Timeline transitionTimeline = new Timeline(new KeyFrame(Duration.millis(greenDuration), e2 -> {
-                    finalTrafficLight.setState(TrafficLight.State.YELLOW);
-                    Timeline yellowTimeline = new Timeline(new KeyFrame(Duration.millis(700), e3 -> {
-                        finalTrafficLight.setState(TrafficLight.State.RED);
-                    }));
-                    yellowTimeline.play();
-                }));
-                transitionTimeline.play();
-
-                updateCount();
-            }));
-            greenLightDelay.play();
-        } else {
-            isProcessingCycle = false;
-        }
+            updateCount();
+        });
+        pause.play();
     }
 
     private void updateCount() {
@@ -554,7 +387,82 @@ public class TrafficSimulator extends Application {
         });
     }
 
-    // Helper methods for UI
+    private void buildJunctionUI() {
+        Rectangle background = new Rectangle(WINDOW_WIDTH, WINDOW_HEIGHT);
+        background.setFill(Color.web("#f3f3f3"));
+        root.getChildren().add(background);
+
+        Rectangle grassTL = makeGrass(0, 0, centerX - JUNCTION_SIZE/2 - 60, centerY - JUNCTION_SIZE/2 - 60);
+        Rectangle grassTR = makeGrass(centerX + JUNCTION_SIZE/2 + 60, 0, WINDOW_WIDTH - (centerX + JUNCTION_SIZE/2 + 60), centerY - JUNCTION_SIZE/2 - 60);
+        Rectangle grassBL = makeGrass(0, centerY + JUNCTION_SIZE/2 + 60, centerX - JUNCTION_SIZE/2 - 60, WINDOW_HEIGHT - (centerY + JUNCTION_SIZE/2 + 60));
+        Rectangle grassBR = makeGrass(centerX + JUNCTION_SIZE/2 + 60, centerY + JUNCTION_SIZE/2 + 60, WINDOW_WIDTH - (centerX + JUNCTION_SIZE/2 + 60), WINDOW_HEIGHT - (centerY + JUNCTION_SIZE/2 + 60));
+        root.getChildren().addAll(grassTL, grassTR, grassBL, grassBR);
+
+        // Junction
+        Rectangle junction = new Rectangle(JUNCTION_SIZE, JUNCTION_SIZE, Color.web("#4b4b4b"));
+        junction.setX(centerX - JUNCTION_SIZE / 2);
+        junction.setY(centerY - JUNCTION_SIZE / 2);
+        root.getChildren().add(junction);
+
+        double roadThickness = LANE_WIDTH * 3;
+
+        Rectangle roadA = new Rectangle(roadThickness, ROAD_LENGTH);
+        roadA.setX(centerX - roadThickness/2);
+        roadA.setY(centerY - JUNCTION_SIZE/2 - ROAD_LENGTH);
+        roadA.setFill(Color.web("#3f3f3f"));
+        root.getChildren().add(roadA);
+
+        Rectangle roadB = new Rectangle(roadThickness, ROAD_LENGTH);
+        roadB.setX(centerX - roadThickness/2);
+        roadB.setY(centerY + JUNCTION_SIZE/2);
+        roadB.setFill(Color.web("#3f3f3f"));
+        root.getChildren().add(roadB);
+
+        Rectangle roadC = new Rectangle(ROAD_LENGTH, roadThickness);
+        roadC.setX(centerX + JUNCTION_SIZE/2);
+        roadC.setY(centerY - roadThickness/2);
+        roadC.setFill(Color.web("#3f3f3f"));
+        root.getChildren().add(roadC);
+
+        Rectangle roadD = new Rectangle(ROAD_LENGTH, roadThickness);
+        roadD.setX(centerX - JUNCTION_SIZE/2 - ROAD_LENGTH);
+        roadD.setY(centerY - roadThickness/2);
+        roadD.setFill(Color.web("#3f3f3f"));
+        root.getChildren().add(roadD);
+
+        drawLaneMarkings(centerX - roadThickness/2, centerY - JUNCTION_SIZE/2 - ROAD_LENGTH, roadThickness, ROAD_LENGTH, true);
+        drawLaneMarkings(centerX - roadThickness/2, centerY + JUNCTION_SIZE/2, roadThickness, ROAD_LENGTH, true);
+        drawLaneMarkings(centerX + JUNCTION_SIZE/2, centerY - roadThickness/2, ROAD_LENGTH, roadThickness, false);
+        drawLaneMarkings(centerX - JUNCTION_SIZE/2 - ROAD_LENGTH, centerY - roadThickness/2, ROAD_LENGTH, roadThickness, false);
+
+        drawCrosswalks();
+
+        lightA = new Circle(centerX, centerY - JUNCTION_SIZE/2 - 20, LIGHT_SIZE, Color.RED);
+        lightB = new Circle(centerX, centerY + JUNCTION_SIZE/2 + 20, LIGHT_SIZE, Color.RED);
+        lightC = new Circle(centerX + JUNCTION_SIZE/2 + 20, centerY, LIGHT_SIZE, Color.RED);
+        lightD = new Circle(centerX - JUNCTION_SIZE/2 - 20, centerY, LIGHT_SIZE, Color.RED);
+        root.getChildren().addAll(lightA, lightB, lightC, lightD);
+
+        trafficLightA = new TrafficLight(lightA);
+        trafficLightB = new TrafficLight(lightB);
+        trafficLightC = new TrafficLight(lightC);
+        trafficLightD = new TrafficLight(lightD);
+
+        // Labels
+        root.getChildren().addAll(
+            new Text(centerX - 12, centerY - ROAD_LENGTH - 30, "Road A"),
+            new Text(centerX - 12, centerY + ROAD_LENGTH + LANE_WIDTH + 10, "Road B"),
+            new Text(centerX + ROAD_LENGTH + 40, centerY + 4, "Road C"),
+            new Text(centerX - ROAD_LENGTH - 40, centerY + 4, "Road D")
+        );
+
+        countA = new Text(centerX - 60, centerY - JUNCTION_SIZE/2 - ROAD_LENGTH + 30, "L1:0 L2:0 L3:0");
+        countB = new Text(centerX - 60, centerY + JUNCTION_SIZE/2 + ROAD_LENGTH - 10, "L1:0 L3:0");
+        countC = new Text(centerX + JUNCTION_SIZE/2 + ROAD_LENGTH - 80, centerY - 20, "L1:0 L3:0");
+        countD = new Text(centerX - JUNCTION_SIZE/2 - ROAD_LENGTH + 20, centerY - 20, "L1:0 L3:0");
+        root.getChildren().addAll(countA, countB, countC, countD, simulationPane);
+    }
+
     private Rectangle makeGrass(double x, double y, double w, double h) {
         Rectangle r = new Rectangle(w, h);
         r.setX(x);
@@ -563,11 +471,16 @@ public class TrafficSimulator extends Application {
         return r;
     }
 
-    private void drawLaneMarkingsForVerticalRoad(double x, double y, double width, double height) {
-        double third = width / 3.0;
+    private void drawLaneMarkings(double x, double y, double w, double h, boolean vertical) {
         for (int i = 1; i < 3; i++) {
-            double markX = x + third * i;
-            Line l = new Line(markX, y, markX, y + height);
+            Line l;
+            if (vertical) {
+                double markX = x + w/3 * i;
+                l = new Line(markX, y, markX, y + h);
+            } else {
+                double markY = y + h/3 * i;
+                l = new Line(x, markY, x + w, markY);
+            }
             l.getStrokeDashArray().addAll(8.0, 10.0);
             l.setStrokeWidth(2);
             l.setStroke(Color.web("#eeeeee"));
@@ -575,63 +488,20 @@ public class TrafficSimulator extends Application {
         }
     }
 
-    private void drawLaneMarkingsForHorizontalRoad(double x, double y, double width, double height) {
-        double third = height / 3.0;
-        for (int i = 1; i < 3; i++) {
-            double markY = y + third * i;
-            Line l = new Line(x, markY, x + width, markY);
-            l.getStrokeDashArray().addAll(8.0, 10.0);
-            l.setStrokeWidth(2);
-            l.setStroke(Color.web("#eeeeee"));
-            root.getChildren().add(l);
-        }
-    }
-
-    private void drawAllCrossWalks() {
+    private void drawCrosswalks() {
         double roadWidth = LANE_WIDTH * 3;
-
-        double crosswalkAY = centerY - JUNCTION_SIZE / 2.0 - 12;
-        double crosswalkAX = centerX - roadWidth / 2.0;
-        drawCrosswalkHorizontalStripes(crosswalkAX, crosswalkAY, roadWidth);
-
-        double crosswalkBY = centerY + JUNCTION_SIZE / 2.0 + 4;
-        double crosswalkBX = centerX - roadWidth / 2.0;
-        drawCrosswalkHorizontalStripes(crosswalkBX, crosswalkBY, roadWidth);
-
-        double crosswalkCY = centerY - roadWidth / 2.0;
-        double crosswalkCX = centerX + JUNCTION_SIZE / 2.0 + 4;
-        drawCrosswalkVerticalStripes(crosswalkCX, crosswalkCY, roadWidth);
-
-        double crosswalkDX = centerX - JUNCTION_SIZE / 2.0 - 12;
-        double crosswalkDY = centerY - roadWidth / 2.0;
-        drawCrosswalkVerticalStripes(crosswalkDX, crosswalkDY, roadWidth);
+        drawCrosswalk(centerX - roadWidth/2, centerY - JUNCTION_SIZE/2 - 12, roadWidth, 8, true);
+        drawCrosswalk(centerX - roadWidth/2, centerY + JUNCTION_SIZE/2 + 4, roadWidth, 8, true);
+        drawCrosswalk(centerX + JUNCTION_SIZE/2 + 4, centerY - roadWidth/2, 8, roadWidth, false);
+        drawCrosswalk(centerX - JUNCTION_SIZE/2 - 12, centerY - roadWidth/2, 8, roadWidth, false);
     }
 
-    private void drawCrosswalkVerticalStripes(double x, double y, double roadHeight) {
-        double stripeWidth = 8;
-        double stripeHeight = 15;
-        double spacing = 5;
-        int numStripes = (int) (roadHeight / (stripeHeight + spacing));
-
-        for (int i = 0; i < numStripes; i++) {
-            Rectangle stripe = new Rectangle(stripeWidth, stripeHeight);
-            stripe.setX(x);
-            stripe.setY(y + i * (stripeHeight + spacing));
-            stripe.setFill(Color.WHITE);
-            root.getChildren().add(stripe);
-        }
-    }
-
-    private void drawCrosswalkHorizontalStripes(double x, double y, double roadWidth) {
-        double stripeWidth = 15;
-        double stripeHeight = 8;
-        double spacing = 5;
-        int numStripes = (int) (roadWidth / (stripeWidth + spacing));
-
-        for (int i = 0; i < numStripes; i++) {
-            Rectangle stripe = new Rectangle(stripeWidth, stripeHeight);
-            stripe.setX(x + i * (stripeWidth + spacing));
-            stripe.setY(y);
+    private void drawCrosswalk(double x, double y, double w, double h, boolean horizontal) {
+        int stripes = horizontal ? (int)(w / 20) : (int)(h / 20);
+        for (int i = 0; i < stripes; i++) {
+            Rectangle stripe = new Rectangle(horizontal ? 15 : w, horizontal ? h : 15);
+            stripe.setX(horizontal ? x + i * 20 : x);
+            stripe.setY(horizontal ? y : y + i * 20);
             stripe.setFill(Color.WHITE);
             root.getChildren().add(stripe);
         }
