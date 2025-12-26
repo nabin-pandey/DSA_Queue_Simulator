@@ -1,7 +1,7 @@
-##Traffic Management Simulation (JavaFX)
+# Traffic Management Simulation 
 
 ## Title
-- **Assignment #:** 1 
+- **Assignment :** 1 
 - **Name:** Nabin Pandey
 - **Roll Number:** 48
 - **Course/Section:** COMP202 / CS-I
@@ -13,11 +13,23 @@
 ## Summary of Work
 This project is a **4-way intersection traffic simulation** built using **Java + JavaFX**. It visualizes queued vehicles on Roads **A, B, C, D**, controls traffic lights, and releases/animates vehicles through the junction based on a scheduling policy.
 
-**Work performed (high level):**
+**Work performed :**
 - Implemented/validated JavaFX traffic-light state updates (RED/YELLOW/GREEN) in a thread-safe way.
 - Implemented and documented a scheduler-based approach where **Road A lane 2 (AL2)** can be treated as the **priority lane** during congestion.
 - Integrated file polling so the simulator reads only newly appended vehicle events from lane files and updates the in-memory queues and UI.
 - Implemented vehicle queue visualization and animation using JavaFX transitions.
+
+---
+
+## Time Complexity Analysis (Queue)
+
+| Operation | Time Complexity | Explanation | Usage in Traffic Simulation |
+|----------|----------------|-------------|-----------------------------|
+| Enqueue  | O(1) | Insertion at the rear of the queue | Vehicle arrival at lane |
+| Dequeue  | O(1) | Removal from the front of the queue | Vehicle passes signal |
+| Peek    | O(1) | Access front element without removal | Check next vehicle |
+| isEmpty | O(1) | Checks if queue has elements | Signal decision logic |
+| Traverse | O(n) | Each element visited once | Debug / display |
 
 ---
 
@@ -31,6 +43,22 @@ This project is a **4-way intersection traffic simulation** built using **Java +
 | ArrayList | `TrafficGenerator` | `List<Rectangle>` per lane queue | Stores queued vehicles for release + reposition |
 | Comparable (ordering) | `LaneEntry` | `LaneEntry implements Comparable` | Defines ordering for the scheduler’s priority queue |
 | JavaFX Timeline / Transitions | `TrafficSimulator`, `TrafficGenerator` | Timelines for polling/cycle timing; transitions for movement | Periodic updates + animation |
+
+---
+
+### Use of HashMap
+
+Although Queue is the core data structure for managing vehicle order, a HashMap was used to efficiently map lane identifiers to their corresponding vehicle queues.
+
+Queue alone does not provide fast access when multiple independent lanes are present. Using a HashMap enables constant-time (O(1)) access to the required lane queue, improving scalability and code clarity.
+
+This separation allows each lane to maintain its own FIFO queue while enabling centralized traffic scheduling logic.
+
+### Use of Array / List
+
+Arrays and Lists were used to store fixed or iterable collections such as lane configurations and signal sequences.
+
+Queue is unsuitable for indexed access or iteration without modification. Lists provide sequential access while preserving order and supporting traversal without removing elements.
 
 ---
 
@@ -113,8 +141,8 @@ Repositioning a queue of size M is **O(M)** because each remaining vehicle must 
 ---
 
 ## Source Code
-- **Repository Link:** <PASTE_YOUR_REPOSITORY_LINK_HERE>
 - **Main JavaFX class:** `com.traffic.gui.TrafficSimulator`
+- All Source code related to the project will be available in this repo. 
 
 ---
 
@@ -161,9 +189,6 @@ Add your demo files in the repo and link them here:
 
 Example embed:
 
-```md
-![Demo](docs/demo.gif)
-```
 
 ---
 
@@ -173,9 +198,9 @@ Example embed:
 - JavaFX Maven plugin usage (`javafx-maven-plugin`): https://github.com/openjfx/javafx-maven-plugin
 - Java `PriorityQueue` complexity notes (Oracle Javadoc): https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/PriorityQueue.html
 - Java `HashMap` performance notes (Oracle Javadoc): https://docs.oracle.com/javase/8/docs/api/java/util/HashMap.html
+- GeeksforGeeks – Queue Data Structure:  https://www.geeksforgeeks.org/queue-data-structure/
 
 ---
 
-## Notes
-- Update placeholders: assignment number, your name, instructor, repo link, demo links.
+## Note
 - Keep lane files in the working directory where the simulator runs.
