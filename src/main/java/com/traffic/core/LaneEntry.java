@@ -15,29 +15,50 @@ public class LaneEntry implements Comparable<LaneEntry> {
         this.priorityLaneCount = 0 ;
     }
 
-    public String getRoadId() { return roadId; }
-    public int getPriorityScore() { return priorityScore; }
-    public int getVehicleCount() { return vehicleCount; }
+    // Getters setters
+    public String getRoadId() {
+        return roadId;
+    }
 
-    public void setPriorityScore(int score) { this.priorityScore = score; }
-    public void setVehicleCount(int count) { this.vehicleCount = count; }
-    public void setPriorityLaneCount(int count) {this.priorityLaneCount = count; }
+    public int getPriorityScore() {
+        return priorityScore;
+    }
+
+    public int getVehicleCount() {
+        return vehicleCount;
+    }
 
 
+    public int getPriorityLaneCount() {
+        return priorityLaneCount;
+    }
+
+    public void setPriorityScore(int score) {
+        this.priorityScore = score;
+    }
+    public void setVehicleCount(int count) {
+        this.vehicleCount = count;
+    }
+    public void setPriorityLaneCount(int count) {
+        this.priorityLaneCount = count;
+    }
     @Override
     public int compareTo(LaneEntry other) {
-        // First compare by priority score (lower is higher priority)
+        // Lower priorityScore = higher priority
+        int scoreCmp = Integer.compare(this.priorityScore, other.priorityScore);
+        if (scoreCmp != 0) return scoreCmp;
+
+        //  If same score, higher total vehicles first
         int thisTotalVehicles = this.vehicleCount + this.priorityLaneCount;
         int otherTotalVehicles = other.vehicleCount + other.priorityLaneCount;
-
-        // If scores are equal, prioritize by vehicle count (more vehicles = higher priority)
         return Integer.compare(otherTotalVehicles, thisTotalVehicles);
     }
 
+
     @Override
-    public boolean equals(Object o){
-        if(this == o) return true;
-        if(o == null || getClass() != o.getClass()) return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
         LaneEntry laneEntry = (LaneEntry) o;
         return roadId.equals(laneEntry.roadId);
     }
@@ -47,4 +68,14 @@ public class LaneEntry implements Comparable<LaneEntry> {
         return roadId.hashCode();
     }
 
+    @Override
+    public String toString() {
+        return "LaneEntry{" +
+               "road=" + roadId +
+               ", priority=" + priorityScore +
+               ", L3=" + vehicleCount +
+               ", L2=" + priorityLaneCount +
+               ", total=" + (vehicleCount + priorityLaneCount) +
+               '}';
+    }
 }

@@ -1,11 +1,20 @@
+
 package com.traffic.core;
 
-import java.util.PriorityQueue;
 import java.util.Collection;
+import java.util.PriorityQueue;
 
 public class TrafficScheduler {
-    private PriorityQueue<LaneEntry> laneQueue;
-    private boolean priorityModeActive = false ;
+
+    private final PriorityQueue<LaneEntry> laneQueue;
+    private boolean priorityModeActive = false;
+
+    // Priority applies ONLY to Road A (AL2)
+    private static final String PRIORITY_ROAD = "A";
+    private static final int ENTER_PRIORITY_AT = 10;
+
+    // Priority ends when AL2 <= 5
+    private static final int EXIT_PRIORITY_AT = 5;
 
     public TrafficScheduler(Collection<LaneEntry> laneEntries) {
         laneQueue = new PriorityQueue<>(laneEntries);
@@ -13,154 +22,73 @@ public class TrafficScheduler {
 
     public void CheckandUpdatePriority(LaneEntry laneEntry, int incomingCount, int priorityLaneCount) {
         laneQueue.remove(laneEntry);
+
         laneEntry.setVehicleCount(incomingCount);
         laneEntry.setPriorityLaneCount(priorityLaneCount);
+
         String roadId = laneEntry.getRoadId();
 
+        // Priority for AL2 logic
+        if (PRIORITY_ROAD.equals(roadId)) {
 
-        /* ENUM for priority
-            1 - Highest Priority
-            5-Medium Priority
-            10- Lowest Priority
-        */
-        if (roadId.equals("A")) {
 
-            // Check AL2 status
-
-            if (priorityLaneCount > 10) {
-
-                laneEntry.setPriorityScore(1);
-
+            if (!priorityModeActive && priorityLaneCount >= ENTER_PRIORITY_AT) {
                 priorityModeActive = true;
-
-                System.out.println("ALERT: Road A Priority Lane (AL2) Overcrowded ! Count: " + priorityLaneCount +
-
-                        " | AL1: " + incomingCount + " - HIGHEST PRIORITY activated");
-
+                System.out.println("ALERT: Priority ON for Road A (AL2 >= " + ENTER_PRIORITY_AT + "). AL2=" + priorityLaneCount);
             }
 
-            // Priority mode ends when AL2 drops below 5
-
-            else if (priorityLaneCount < 5 && priorityModeActive) {
-
+            // off when AL2 drops to 5
+            if (priorityModeActive && priorityLaneCount <= EXIT_PRIORITY_AT) {
                 priorityModeActive = false;
-
-                // Still check incoming lane for normal priority
-
-                if (incomingCount > 10) {
-
-                    laneEntry.setPriorityScore(1);
-
-                    System.out.println("Road A: AL2 cleared, but AL1 overcrowded (" + incomingCount + ") - HIGH PRIORITY");
-
-                } else if (incomingCount > 5) {
-
-                    laneEntry.setPriorityScore(5);
-
-                    System.out.println("Road A: AL2 cleared, AL1 medium traffic (" + incomingCount + ") - MEDIUM PRIORITY");
-
-                } else {
-
-                    laneEntry.setPriorityScore(10);
-
-                    System.out.println("✓ Road A: AL2 cleared (" + priorityLaneCount + "), returning to normal - NORMAL PRIORITY");
-
-                }
-
+                System.out.println("✓ Priority OFF for Road A (AL2 <= " + EXIT_PRIORITY_AT + "). AL2=" + priorityLaneCount);
             }
 
-            // AL2 has less than 10, but check incoming lane
 
-            else {
-
-                if (incomingCount > 10) {
-
-                    laneEntry.setPriorityScore(1);
-
-                    System.out.println("⚠️ Road A: AL1 overcrowded (" + incomingCount + ") - HIGH PRIORITY");
-
-                } else if (incomingCount > 5) {
-
-                    laneEntry.setPriorityScore(5);
-
-                    System.out.println("Road A: AL1 medium traffic (" + incomingCount + ") - MEDIUM PRIORITY");
-
-                } else {
-
-                    laneEntry.setPriorityScore(10);
-
-                    System.out.println("Road A: Normal traffic - NORMAL PRIORITY");
-
-                }
-
-            }}
-        else {
-
-            // Only check incoming lane (AL1 equivalent) for these roads
-
-            if (incomingCount > 10) {
-
-                laneEntry.setPriorityScore(1);
-
-                System.out.println(" Road " + roadId + ": Overcrowded (" + incomingCount + ") - HIGH PRIORITY");
-
-            } else if (incomingCount > 5) {
-
-                laneEntry.setPriorityScore(5);
-
-                System.out.println("Road " + roadId + ": Medium traffic (" + incomingCount + ") - MEDIUM PRIORITY");
-
+            if (priorityModeActive) {
+                laneEntry.setPriorityScore(0);
             } else {
-
-                laneEntry.setPriorityScore(10);
-
-                System.out.println("Road " + roadId + ": Normal traffic - NORMAL PRIORITY");
-
+                // Normal scoring for A
+                int totalA = incomingCount + priorityLaneCount;
+                if (totalA > 10) laneEntry.setPriorityScore(1);
+                else if (totalA > 5) laneEntry.setPriorityScore(5);
+                else laneEntry.setPriorityScore(10);
             }
 
+        } else {
+            // Road B,C,D will stop and road A only moves
+            if (priorityModeActive) {
+                laneEntry.setPriorityScore(50);
+            } else {
+                // Normal scoring for B/C/D
+                int total = incomingCount + priorityLaneCount;
+                if (total > 10) laneEntry.setPriorityScore(1);
+                else if (total > 5) laneEntry.setPriorityScore(5);
+                else if (total > 0) laneEntry.setPriorityScore(10);
+                else laneEntry.setPriorityScore(15);
+            }
         }
 
-
-
         laneQueue.add(laneEntry);
-
     }
 
-    public LaneEntry getNextLaneToServe(){  return laneQueue.peek();    }
+    public String serverAndRotateLane() {
+        // If A-priority mode is active, alwys  serve A
+        if (priorityModeActive) return PRIORITY_ROAD;
 
-    public String serverAndRotateLane(){
         LaneEntry servedLane = laneQueue.poll();
-
-        if(servedLane == null) return "No lanes available." ;
+        if (servedLane == null) {
+            System.err.println("ERROR: No lanes available in queue!");
+            return "A";
+        }
 
         String servedId = servedLane.getRoadId();
-        
-        System.out.println(" Scheduler selected lane: " + servedId + " priority=" + servedLane.getPriorityScore() + ", count=" + servedLane.getVehicleCount() );
-        
+
+        // Re-add for next cycle
         laneQueue.add(servedLane);
         return servedId;
     }
 
-      //Check function for AL2 Priority
     public boolean isPriorityModeActive() {
-
         return priorityModeActive;
-
-    }
-
-    public int calculateAverageVehicles(Collection<LaneEntry> entries) {
-
-        int total = 0;
-        int count = 0;
-        for (LaneEntry entry : entries) {
-            // If AL2 priority mode is active, don't include Road A in average
-            if (priorityModeActive && entry.getRoadId().equals("A")) {
-                continue;
-            }
-            total += entry.getVehicleCount();
-            count++;
-        }
-        return count > 0 ? (int) Math.ceil((double) total / count) : 0;
     }
 }
-

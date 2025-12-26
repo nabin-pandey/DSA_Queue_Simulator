@@ -1,18 +1,8 @@
 package com.traffic.generator;
 
 import java.io.*;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-
-/**
- * File Format per line:
- * VEHICLE_ID,LANE_NUMBER,TIMESTAMP
- *
- * Lane Numbers:
- * 1 = Normal incoming (straight/right)
- * 2 = Priority incoming (AL2 only - straight/right)
-  3 = Left-turn only incoming
- */
 
 public class TrafficGeneratorProcess {
 
@@ -21,135 +11,138 @@ public class TrafficGeneratorProcess {
     private static final String LANE_C_FILE = "lanec.txt";
     private static final String LANE_D_FILE = "laned.txt";
 
-    private static final Random random = new Random();
+    private static final Random RNG = new Random();
     private static volatile boolean running = true;
 
+
+    private static final int CYCLE_MS = 1000;          // 1 second
+    private static final double EXTRA_CAR_PROB = 0.40; // chance of second car
+
+    private static final List<SourceLane> SOURCES = Arrays.asList(
+            // Road A outgoing
+            new SourceLane("A", 2, Arrays.asList(new Dest("B", 1), new Dest("D", 1))),
+            new SourceLane("A", 3, Arrays.asList(new Dest("C", 1))),
+
+            // Road B outgoing
+            new SourceLane("B", 2, Arrays.asList(new Dest("A", 1))),
+            new SourceLane("B", 3, Arrays.asList(new Dest("D", 1))),
+
+            // Road C outgoing
+            new SourceLane("C", 2, Arrays.asList(new Dest("D", 1), new Dest("A", 1))),
+            new SourceLane("C", 3, Arrays.asList(new Dest("B", 1))),
+
+            // Road D outgoing
+            new SourceLane("D", 2, Arrays.asList(new Dest("C", 1), new Dest("B", 1))),
+            new SourceLane("D", 3, Arrays.asList(new Dest("A", 1)))
+    );
+
+    // round-robin pointer
+    private static int rrIndex = 0;
+
     public static void main(String[] args) {
+        System.out.println("TrafficGeneratorProcess STARTED");
+        System.out.println("Press Ctrl+C to stop.\n");
 
-        System.out.println("  Traffic Generator Process Started");
-        System.out.println("Lane Structure:");
-        System.out.println("  L1 = Normal incoming (straight/right)");
-        System.out.println("  L2 = Priority (AL2 only)");
-        System.out.println("  L3 = Left-turn only");
-        System.out.println("----------------------------------------");
-        System.out.println("Writing to files:");
-        System.out.println("  - " + LANE_A_FILE + " (L1, L2, L3)");
-        System.out.println("  - " + LANE_B_FILE + " (L1, L3)");
-        System.out.println("  - " + LANE_C_FILE + " (L1, L3)");
-        System.out.println("  - " + LANE_D_FILE + " (L1, L3)");
-        System.out.println("--------------------------------------------");
-        System.out.println("Press Ctrl+C to stop\n");
-
-        // Cleanup old files on start
         clearLaneFiles();
 
-        // Shutdown hook for graceful exit
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             running = false;
-            System.out.println("\n\n Traffic Generator shutting down...");
+            System.out.println("\nTraffic Generator shutting down...");
         }));
 
-        // Main loop
-        int cycle = 0;
+        long seq = 0;
         while (running) {
             try {
-                cycle++;
-                System.out.println("\n--- Cycle " + cycle + " ---");
-
-                // Generate 1-2 vehicles per cycle
-                generateTraffic();
-
-                // Generate new vehicles every 2.5 seconds
-                TimeUnit.MILLISECONDS.sleep(2500);
-
+                seq++;
+                generateCycle(seq);
+                TimeUnit.MILLISECONDS.sleep(CYCLE_MS);
             } catch (InterruptedException e) {
-                System.out.println("Generator interrupted");
                 break;
             } catch (Exception e) {
-                System.err.println("Error in generation cycle: " + e.getMessage());
+                System.err.println("Generation error: " + e.getMessage());
                 e.printStackTrace();
             }
         }
-
-        System.out.println("Traffic Generator stopped.");
+        System.out.println("Traffic Generator STOPPED");
     }
 
-    /**
-     * Generate random traffic following assignment specifications:
-     *
-     * Road A: L1 (normal), L2 (priority), L3 (left-turn)
-     * Roads B,C,D: L1 (normal), L3 (left-turn)
-     */
-    private static void generateTraffic() {
-        long time = System.currentTimeMillis();
-        int generated = 0;
+    private static void generateCycle(long seq) {
+        long now = System.currentTimeMillis();
 
-        // Road A
-        if (random.nextDouble() < 0.3) {
-            writeVehicle(LANE_A_FILE, "A1-" + (time % 10000), 1, time);
-            generated++;
-        }
-        if (random.nextDouble() < 0.2) {
-            writeVehicle(LANE_A_FILE, "A2-" + (time % 10000), 2, time);
-            generated++;
-        }
-        if (random.nextDouble() < 0.15) {
-            writeVehicle(LANE_A_FILE, "A3-" + (time % 10000), 3, time);
-            generated++;
-        }
+        // one vehicle from next outgoing lane in round-robin
+        SourceLane s1 = SOURCES.get(rrIndex);
+        rrIndex = (rrIndex + 1) % SOURCES.size();
+        emitFromSource(s1, seq, now);
 
-        // Road B
-        if (random.nextDouble() < 0.25) {
-            writeVehicle(LANE_B_FILE, "B1-" + (time % 10000), 1, time);
-            generated++;
-        }
-        if (random.nextDouble() < 0.1) {
-            writeVehicle(LANE_B_FILE, "B3-" + (time % 10000), 3, time);
-            generated++;
-        }
 
-        // Road C
-        if (random.nextDouble() < 0.25) {
-            writeVehicle(LANE_C_FILE, "C1-" + (time % 10000), 1, time);
-            generated++;
+        if (RNG.nextDouble() < EXTRA_CAR_PROB) {
+            SourceLane s2 = SOURCES.get(RNG.nextInt(SOURCES.size()));
+            emitFromSource(s2, seq + 9999, now); // different suffix to reduce id collisions
         }
-        if (random.nextDouble() < 0.1) {
-            writeVehicle(LANE_C_FILE, "C3-" + (time % 10000), 3, time);
-            generated++;
-        }
+    }
 
-        // Road D
-        if (random.nextDouble() < 0.2) {
-            writeVehicle(LANE_D_FILE, "D1-" + (time % 10000), 1, time);
-            generated++;
-        }
-        if (random.nextDouble() < 0.1) {
-            writeVehicle(LANE_D_FILE, "D3-" + (time % 10000), 3, time);
-            generated++;
-        }
+    private static void emitFromSource(SourceLane src, long seq, long now) {
+        //Will not generate vehicle Lane 1
+        if (src.lane == 1) return;
 
-        if (generated > 0) {
-            System.out.println("Generated " + generated + " vehicles");
+        // itself choose destination from its allowed list
+        Dest dst = src.dests.get(RNG.nextInt(src.dests.size()));
+
+        //  car must move to  lane 1 not others
+        if (dst.lane != 1) return;
+
+        String id = src.road + src.lane + dst.road + dst.lane + "-" + (seq % 100000);
+        writeVehicle(fileForRoad(src.road), id, src.lane, now);
+
+        System.out.println("Generated: " + id + " (src " + src.road + src.lane + " -> " + dst.road + dst.lane + ")");
+    }
+
+    private static String fileForRoad(String road) {
+        switch (road) {
+            case "A": return LANE_A_FILE;
+            case "B": return LANE_B_FILE;
+            case "C": return LANE_C_FILE;
+            case "D": return LANE_D_FILE;
+            default: throw new IllegalArgumentException("Invalid road: " + road);
         }
     }
 
     private static synchronized void writeVehicle(String file, String id, int lane, long time) {
-        try (FileWriter fw = new FileWriter(file, true);
-             BufferedWriter bw = new BufferedWriter(fw)) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(file, true))) {
             bw.write(id + "," + lane + "," + time);
             bw.newLine();
-            System.out.println("  " + id + " -> L" + lane);
         } catch (IOException e) {
-            System.err.println("Error writing to " + file);
+            System.err.println("Error writing to " + file + ": " + e.getMessage());
         }
     }
 
-    //Clear all lane files on startup
-
     private static void clearLaneFiles() {
-        new File(LANE_A_FILE).delete();
-        new File(LANE_B_FILE).delete();
-        new File(LANE_C_FILE).delete();
-        new File(LANE_D_FILE).delete();
+        delete(LANE_A_FILE);
+        delete(LANE_B_FILE);
+        delete(LANE_C_FILE);
+        delete(LANE_D_FILE);
+    }
+
+    private static void delete(String f) {
+        File file = new File(f);
+        if (file.exists()) file.delete();
+    }
+
+    // Simple structs
+    private static class Dest {
+        final String road;
+        final int lane; // must be 1
+        Dest(String road, int lane) { this.road = road; this.lane = lane; }
+    }
+
+    private static class SourceLane {
+        final String road;
+        final int lane; // must be 2 or 3
+        final List<Dest> dests;
+        SourceLane(String road, int lane, List<Dest> dests) {
+            this.road = road;
+            this.lane = lane;
+            this.dests = dests;
+        }
     }
 }

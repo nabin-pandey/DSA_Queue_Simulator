@@ -1,48 +1,46 @@
+
 package com.traffic.gui;
 
 import javafx.application.Platform;
-import javafx.scene.shape.Circle;
 import javafx.scene.paint.Color;
-
-import java.awt.*;
+import javafx.scene.shape.Circle;
 
 public class TrafficLight {
-    public enum State {RED, YELLOW, GREEN}
+
+    public enum State { RED, YELLOW, GREEN }
 
     private final Circle circle;
-    private State state = State.RED;  //Fixed the initial state to RED earlier it wasn't declared.
+    private State state = State.RED;
 
     public TrafficLight(Circle circle) {
-        this.circle = circle ;
-        setState(State.RED) ;
-
+        this.circle = circle;
+        setState(State.RED);
     }
-
-
-
-    public State getState() {   return state; }
-
     public void setState(State s) {
+        final State target = (s == null) ? State.RED : s; // s is  final variable for lambda expression
+        this.state = target;
 
-        this.state = s;
-
-        Platform.runLater(() -> {
-            switch (s){
-                case GREEN : circle.setFill(Color.GREEN);
-                break ;
-
-                case YELLOW: circle.setFill(Color.YELLOW);
-                break ;
-
+        Runnable updateUI = () -> {
+            switch (target) {
+                case GREEN:
+                    circle.setFill(Color.GREEN);
+                    break;
+                case YELLOW:
+                    circle.setFill(Color.YELLOW);
+                    break;
                 case RED:
                 default:
                     circle.setFill(Color.RED);
-                    break ;
+                    break;
             }
-        });
+        };
 
+        if (Platform.isFxApplicationThread()) {
+            updateUI.run();
+        } else {
+            Platform.runLater(updateUI);
+        }
     }
 
-    public Circle getCircle() { return circle; }
 
 }

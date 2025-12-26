@@ -54,6 +54,10 @@ public class VehicleQueue {
         this.front = this.front.getNext() ;
         this.size-- ;
 
+        if(this.front == null){
+            this.rear = null ;
+        }
+
         System.out.println("vehicle : " + removedID + " dequeued : " + this.size);
         return removedID;
 

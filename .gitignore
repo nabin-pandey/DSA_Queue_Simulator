@@ -41,3 +41,6 @@ build/
 
 ##Maven##
 *.xml
+
+##TXT##
+.txt

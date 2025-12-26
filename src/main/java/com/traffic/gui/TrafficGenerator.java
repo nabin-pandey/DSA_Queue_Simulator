@@ -1,6 +1,8 @@
+
 package com.traffic.gui;
 
 import com.traffic.core.Lane;
+import javafx.animation.Interpolator;
 import javafx.animation.PathTransition;
 import javafx.application.Platform;
 import javafx.scene.layout.Pane;
@@ -8,9 +10,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
 import javafx.util.Duration;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class TrafficGenerator {
 
@@ -18,29 +18,20 @@ public class TrafficGenerator {
     private static final int JUNCTION_SIZE = LANE_WIDTH * 4;
     private static final int ROAD_LENGTH = 300;
 
-    private final Lane laneA;
-    private final Lane laneB;
-    private final Lane laneC;
-    private final Lane laneD;
-
+    private final Lane laneA, laneB, laneC, laneD;
     private final Pane simulationPane;
-    private final Random random = new Random();
     private final double centerX, centerY;
+    private final Random random = new Random();
+
+    // Waiting queues for all roads/laneNumbers
+    private final Map<String, List<Rectangle>> waiting = new HashMap<>();
 
 
-    // Store waiting cars for each lane
-    private final List<Rectangle> waitingCarsA_L1 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsA_L2 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsA_L3 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsB_L1 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsB_L3 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsC_L1 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsC_L3 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsD_L1 = new ArrayList<>();
-    private final List<Rectangle> waitingCarsD_L3 = new ArrayList<>();
+    private final Map<String, double[]> laneOffsetsByRoad = new HashMap<>();
 
     public TrafficGenerator(Lane laneA, Lane laneB, Lane laneC, Lane laneD,
                             Pane simulationPane, double centerX, double centerY) {
+
         this.laneA = laneA;
         this.laneB = laneB;
         this.laneC = laneC;
@@ -48,284 +39,272 @@ public class TrafficGenerator {
         this.simulationPane = simulationPane;
         this.centerX = centerX;
         this.centerY = centerY;
-    }
 
-    // Generate random traffic for all lanes
-    public void generateRandomTraffic() {
-        if (random.nextDouble() < 0.4) {
-            laneA.enqueueToLane(1, "A1-" + System.currentTimeMillis() % 1000);
-            addWaitingCar("A", 1);
-        }
-        //AL2 - Priority Lane
-        if (random.nextDouble() < 0.25) {
-            laneA.enqueueToLane(2, "A2-" + System.currentTimeMillis() % 1000);
-            addWaitingCar("A", 2);
-        }
-        if (random.nextDouble() < 0.15) {
-            laneA.enqueueToLane(3, "A3-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("A", 3);
-        }
-        if (random.nextDouble() < 0.35) {
-            laneB.enqueueToLane(1, "B1-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("B", 1);
-        }
-        if (random.nextDouble() < 0.15) {
-            laneB.enqueueToLane(3, "B3-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("B", 3);
-        }
-
-        // Road C
-        if (random.nextDouble() < 0.4) {
-            laneC.enqueueToLane(1, "C1-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("C", 1);
-        }
-        if (random.nextDouble() < 0.15) {
-            laneC.enqueueToLane(3, "C3-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("C", 3);
-        }
-
-        // Road D
-        if (random.nextDouble() < 0.3) {
-            laneD.enqueueToLane(1, "D1-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("D", 1);
-        }
-        if (random.nextDouble() < 0.15) {
-            laneD.enqueueToLane(3, "D3-" + System.currentTimeMillis() % 10000);
-            addWaitingCar("D", 3);
-        }
-    }
-
-    // Add a waiting car visual at the stop line
-    public void addWaitingCar(String laneName, int laneNumber) {
-        Rectangle car = new Rectangle(20, 35);
-        car.setArcHeight(8);
-        car.setArcWidth(8);
-        car.setStroke(Color.BLACK);
-        car.setStrokeWidth(1);
-        car.setFill(laneNumber == 2 ? Color.GOLD : getRandomCarColor());
-
-        if (laneNumber == 2) {
-            car.setFill(Color.GOLD);
-        } else {
-            car.setFill(getRandomCarColor());
-        }
-
-        double laneOffset = LANE_WIDTH / 2.0;
-        List<Rectangle> waitingList = null;
-        double carX = 0, carY = 0;
-        int rotation = 0;
-
-        switch (laneName) {
-            case "A": // North road going down
-                double roadCenterX_A = centerX;
-                if (laneNumber == 1) { // Right lane
-                    waitingList = waitingCarsA_L1;
-                    carX = roadCenterX_A + 50 - 10;
-                } else if (laneNumber == 2) { // Middle lane (priority)
-                    waitingList = waitingCarsA_L2;
-                    carX = roadCenterX_A - 10;
-                } else if (laneNumber == 3) { // Left lane
-                    waitingList = waitingCarsA_L3;
-                    carX = roadCenterX_A - 50 - 10;
-                }
-                carY = centerY - JUNCTION_SIZE / 2.0 - 60 - (waitingList.size() * 45);
-                break;
-
-            case "B": // South road going up
-                double roadCenterX_B = centerX;
-                rotation = 180;
-                if (laneNumber == 1) {
-                    waitingList = waitingCarsB_L1;
-                    carX = roadCenterX_B - 50 - 10;
-                } else if (laneNumber == 3) { // Left lane
-                    waitingList = waitingCarsB_L3;
-                    carX = roadCenterX_B + 50 - 10;
-                }
-                carY = centerY + JUNCTION_SIZE / 2.0 + 60 + (waitingList.size() * 45);
-                break;
-
-            case "C": // East road going left
-                double roadCenterY_C = centerY;
-                rotation = 90;
-                if (laneNumber == 1) {
-                    waitingList = waitingCarsC_L1;
-                    carY = roadCenterY_C + 50 - 17.5;
-                } else if (laneNumber == 3) { // Left lane
-                    waitingList = waitingCarsC_L3;
-                    carY = roadCenterY_C - 50 - 17.5;
-                }
-                carX = centerX + JUNCTION_SIZE / 2.0 + 60 + (waitingList.size() * 45);
-                break;
-
-            case "D": // West road going right
-                double roadCenterY_D = centerY;
-                rotation = -90;
-                if (laneNumber == 1) {
-                    waitingList = waitingCarsD_L1;
-                    carY = roadCenterY_D - 50 - 17.5;
-                } else if (laneNumber == 3) { // Left lane
-                    waitingList = waitingCarsD_L3;
-                    carY = roadCenterY_D + 50 - 17.5;
-                }
-                carX = centerX - JUNCTION_SIZE / 2.0 - 60 - (waitingList.size() * 45);
-                break;
-        }
-
-        if (waitingList != null) {
-            car.setX(carX);
-            car.setY(carY);
-            car.setRotate(rotation);
-            waitingList.add(car);
-            Platform.runLater(() -> simulationPane.getChildren().add(car));
-        }
-    }
-
-    // Remove and animate waiting cars when light turns green
-    public void releaseWaitingCars(String laneName, int laneNumber, int count) {
-        List<Rectangle> waitingList = getWaitingList(laneName, laneNumber);
-
-        if (waitingList != null && !waitingList.isEmpty()) {
-            int toRelease = Math.min(count, waitingList.size());
-            for (int i = 0; i < toRelease; i++) {
-                if (!waitingList.isEmpty()) {
-                    Rectangle car = waitingList.remove(0);
-                    Platform.runLater(() -> simulationPane.getChildren().remove(car));
-                }
+        // init waiting lists
+        for (String r : Arrays.asList("A", "B", "C", "D")) {
+            for (int l = 1; l <= 3; l++) {
+                waiting.put(r + l, new ArrayList<>());
             }
-            repositionWaitingCars(laneName, laneNumber);
         }
+
+        //  lane placement
+        laneOffsetsByRoad.put("A", new double[]{0, -LANE_WIDTH, 0, +LANE_WIDTH}); // AL1 left, AL2 mid, AL3 right
+        laneOffsetsByRoad.put("B", new double[]{0, +LANE_WIDTH, 0, -LANE_WIDTH}); // BL1 right, BL2 mid, BL3 left
+        laneOffsetsByRoad.put("C", new double[]{0, -LANE_WIDTH, 0, +LANE_WIDTH}); // CL1 top, CL2 mid, CL3 bottom
+        laneOffsetsByRoad.put("D", new double[]{0, +LANE_WIDTH, 0, -LANE_WIDTH}); // DL1 bottom, DL2 mid, DL3 top
     }
 
-    private void repositionWaitingCars(String laneName, int laneNumber) {
-        List<Rectangle> waitingList = getWaitingList(laneName, laneNumber);
-        if (waitingList == null) return;
+    // ---------------- Add waiting car ----------------
+    public void addWaitingCar(String roadId, int laneNumber, String vehicleId) {
 
-        double laneOffset = LANE_WIDTH / 2.0;
+        //lane1 is accept-only; never draw it as a source queue
+        if (laneNumber == 1) return;
 
-        for (int i = 0; i < waitingList.size(); i++) {
-            final Rectangle car = waitingList.get(i);
-            final int index = i;
+        List<Rectangle> list = waiting.get(roadId + laneNumber);
+        if (list == null) return;
+
+        Rectangle car = new Rectangle(20, 35);
+        car.setArcWidth(5);
+        car.setArcHeight(5);
+        car.setFill(laneNumber == 2 ? Color.GOLD : getRandomCarColor());
+        car.setStroke(Color.BLACK);
+        car.setUserData(vehicleId);
+
+        int pos = list.size();
+        double gap = 45;
+        double off = laneOffset(roadId, laneNumber);
+
+        double cx = 0, cy = 0, rot = 0;
+        switch (roadId) {
+            case "A":
+                // A is top, cars queue upward
+                cx = centerX + off;
+                cy = (centerY - (JUNCTION_SIZE / 2.0) - 40) - (pos * gap);
+                rot = 180;
+                break;
+
+            case "B":
+                // B is bottom, cars queue downward
+                cx = centerX + off;
+                cy = (centerY + (JUNCTION_SIZE / 2.0) + 40) + (pos * gap);
+                rot = 0;
+                break;
+
+            case "C":
+                // C is right, cars queue to the right
+                cx = (centerX + (JUNCTION_SIZE / 2.0) + 40) + (pos * gap);
+                cy = centerY + off;
+                rot = -90;
+                break;
+
+            case "D":
+                // D is left, cars queue to the left
+                cx = (centerX - (JUNCTION_SIZE / 2.0) - 40) - (pos * gap);
+                cy = centerY + off;
+                rot = 90;
+                break;
+
+            default:
+                return;
+        }
+
+        car.setX(cx - 10);
+        car.setY(cy - 17.5);
+        car.setRotate(rot);
+
+        list.add(car);
+        Platform.runLater(() -> simulationPane.getChildren().add(car));
+    }
+
+    //Release waiting cars
+    public void releaseWaitingCars(String roadId, int laneNumber, int count) {
+
+        // accept lane never serves as a source
+        if (laneNumber == 1) return;
+
+        List<Rectangle> list = waiting.get(roadId + laneNumber);
+
+        // correct null/empty check
+        if (list == null || list.isEmpty()) return;
+
+        Lane laneObj = getLaneByRoad(roadId);
+        int toRelease = Math.min(count, list.size());
+
+        for (int i = 0; i < toRelease; i++) {
+            Rectangle car = list.remove(0);
+
+            // dequeue logical queue too (keeps sizes/priority correct)
+            dequeueFromLane(laneObj, laneNumber);
+
+            createAndAnimateCar(car, roadId);
+        }
+
+        reposition(roadId, laneNumber);
+    }
+
+    // Reposition of the stopped traffic
+    private void reposition(String roadId, int laneNumber) {
+
+        List<Rectangle> list = waiting.get(roadId + laneNumber);
+
+        // correct null/empty check
+        if (list == null || list.isEmpty()) return;
+
+        double gap = 45;
+        double off = laneOffset(roadId, laneNumber);
+
+        for (int i = 0; i < list.size(); i++) {
+            Rectangle car = list.get(i);
+            int idx = i;
 
             Platform.runLater(() -> {
-                switch (laneName) {
-                    case "A": car.setY(centerY - JUNCTION_SIZE / 2.0 - 60 - (index * 45)); break;
-                    case "B": car.setY(centerY + JUNCTION_SIZE / 2.0 + 60 + (index * 45)); break;
-                    case "C": car.setX(centerX + JUNCTION_SIZE / 2.0 + 60 + (index * 45)); break;
-                    case "D": car.setX(centerX - JUNCTION_SIZE / 2.0 - 60 - (index * 45)); break;
+                double cx = 0, cy = 0;
+                switch (roadId) {
+                    case "A":
+                        cx = centerX + off;
+                        cy = (centerY - (JUNCTION_SIZE / 2.0) - 40) - (idx * gap);
+                        break;
+                    case "B":
+                        cx = centerX + off;
+                        cy = (centerY + (JUNCTION_SIZE / 2.0) + 40) + (idx * gap);
+                        break;
+                    case "C":
+                        cx = (centerX + (JUNCTION_SIZE / 2.0) + 40) + (idx * gap);
+                        cy = centerY + off;
+                        break;
+                    case "D":
+                        cx = (centerX - (JUNCTION_SIZE / 2.0) - 40) - (idx * gap);
+                        cy = centerY + off;
+                        break;
+                    default:
+                        return;
                 }
+                car.setTranslateX(0);
+                car.setTranslateY(0);
+                car.setX(cx - 10);
+                car.setY(cy - 17.5);
             });
         }
     }
 
-    private List<Rectangle> getWaitingList(String laneName, int laneNumber) {
-        switch (laneName + laneNumber) {
-            case "A1": return waitingCarsA_L1;
-            case "A2": return waitingCarsA_L2;
-            case "A3": return waitingCarsA_L3;
-            case "B1": return waitingCarsB_L1;
-            case "B3": return waitingCarsB_L3;
-            case "C1": return waitingCarsC_L1;
-            case "C3": return waitingCarsC_L3;
-            case "D1": return waitingCarsD_L1;
-            case "D3": return waitingCarsD_L3;
-            default: return null;
-        }
+    //Car will animation as it recive
+    private void createAndAnimateCar(Rectangle car, String srcRoad) {
+        String vid = (car.getUserData() == null) ? "" : car.getUserData().toString();
 
-    }
+        // Generator writes: "B2->A1-123"
+        String dstRoad = parseDstRoad(vid);
+        if (dstRoad == null) dstRoad = randomIncomingRoad();
 
-    // Create and animate a car through the junction
-    public void createAndAnimateCar(String laneName, int laneNumber) {
-        Rectangle car = new Rectangle(20, 35);
-        car.setArcHeight(8);
-        car.setArcWidth(8);
-        car.setStroke(Color.BLACK);
-        car.setStrokeWidth(1);
-        car.setFill(laneNumber == 2 ? Color.GOLD : getRandomCarColor());
-
-        int direction = (laneNumber == 3) ? 1 : random.nextInt(2); // L3=left, others=straight/right
-        if (direction == 1 && laneNumber != 3) direction = 2; // Convert to right turn
+        // Destination must always be incoming lane 1 (accept lane)
+        double[] end = destinationPoint(dstRoad, 1);
 
         Path path = new Path();
-        double startX = 0, startY = 0;
+        double startX = car.getX() + 10;
+        double startY = car.getY() + 17.5;
 
-        // Calculate exact starting position based on lane
-        switch (laneName) {
-            case "A":
-                startX = centerX + (laneNumber == 1 ? 50 : laneNumber == 2 ? 0 : -50);
-                startY = centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 50;
-                path.getElements().add(new MoveTo(startX, startY));
-                path.getElements().add(new LineTo(startX, centerY - JUNCTION_SIZE / 2.0));
+        path.getElements().add(new MoveTo(startX, startY));
 
-                if (direction == 0) { // Straight
-                    path.getElements().add(new LineTo(startX, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH));
-                } else if (direction == 1) {
-                    path.getElements().add(new QuadCurveTo(startX, centerY, centerX + JUNCTION_SIZE / 2.0, centerY + 50));
-                    path.getElements().add(new LineTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH, centerY + 50));
-                } else {
-                    path.getElements().add(new QuadCurveTo(startX, centerY, centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY - 50));
-                }
-                break;
-
-            case "B":
-                startX = centerX - (laneNumber == 1 ? 50 : -50);
-                startY = centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 50;
-                path.getElements().add(new MoveTo(startX, startY));
-                path.getElements().add(new LineTo(startX, centerY + JUNCTION_SIZE / 2.0));
-
-                if (direction == 0) {
-                    path.getElements().add(new LineTo(startX, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH));
-                } else if (direction == 1) {
-                    path.getElements().add(new QuadCurveTo(startX, centerY, centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, centerY - 50));
-                } else {
-                    path.getElements().add(new QuadCurveTo(startX, centerY, centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH, centerY + 50));
-                }
-                break;
-
-            case "C":
-                startX = centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH - 50;
-                startY = centerY + (laneNumber == 1 ? 50 : -50);
-                path.getElements().add(new MoveTo(startX, startY));
-                path.getElements().add(new LineTo(centerX + JUNCTION_SIZE / 2.0, startY));
-
-                if (direction == 0) {
-                    path.getElements().add(new LineTo(centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH, startY));
-                } else if (direction == 1) {
-                    path.getElements().add(new QuadCurveTo(centerX, startY, centerX - 50, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH));
-                } else {
-                    path.getElements().add(new QuadCurveTo(centerX, startY, centerX + 50, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH));
-                }
-                break;
-
-            case "D":
-                startX = centerX - JUNCTION_SIZE / 2.0 - ROAD_LENGTH + 50;
-                startY = centerY - (laneNumber == 1 ? 50 : -50);
-                path.getElements().add(new MoveTo(startX, startY));
-                path.getElements().add(new LineTo(centerX - JUNCTION_SIZE / 2.0, startY));
-
-                if (direction == 0) {
-                    path.getElements().add(new LineTo(centerX + JUNCTION_SIZE / 2.0 + ROAD_LENGTH, startY));
-                } else if (direction == 1) {
-                    path.getElements().add(new QuadCurveTo(centerX, startY, centerX + 50, centerY - JUNCTION_SIZE / 2.0 - ROAD_LENGTH));
-                } else {
-                    path.getElements().add(new QuadCurveTo(centerX, startY, centerX - 50, centerY + JUNCTION_SIZE / 2.0 + ROAD_LENGTH));
-                }
-                break;
+        boolean straight = isStraight(srcRoad, dstRoad);
+        if (straight) {
+            path.getElements().add(new LineTo(end[0], end[1]));
+        } else {
+            path.getElements().add(new QuadCurveTo(centerX, centerY, end[0], end[1]));
         }
 
-        // Add car to scene and animate
-        Platform.runLater(() -> {
-            simulationPane.getChildren().add(car);
-            PathTransition pt = new PathTransition(Duration.millis(2000), path, car);
-            pt.setOrientation(PathTransition.OrientationType.ORTHOGONAL_TO_TANGENT);
-            pt.setOnFinished(event -> simulationPane.getChildren().remove(car));
-            pt.play();
-        });
+        PathTransition pt = new PathTransition(Duration.seconds(3.5), path, car);
+        pt.setInterpolator(Interpolator.LINEAR);
+        pt.setOnFinished(e -> Platform.runLater(() -> simulationPane.getChildren().remove(car)));
+        pt.play();
+    }
+
+    private String parseDstRoad(String id) {
+        try {
+            int arrow = id.indexOf("->");
+            if (arrow < 0) return null;
+
+            String right = id.substring(arrow + 2).trim(); // "A1-123"
+            int dash = right.indexOf("-");
+            if (dash >= 0) right = right.substring(0, dash);
+
+            if (right.length() < 2) return null;
+            return right.substring(0, 1);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // Designated point to move the car in that lane.
+    private double[] destinationPoint(String road, int lane) {
+        double off = laneOffset(road, lane);
+        switch (road) {
+            case "A":
+                return new double[]{centerX + off, centerY - (JUNCTION_SIZE / 2.0) - ROAD_LENGTH};
+            case "B":
+                return new double[]{centerX + off, centerY + (JUNCTION_SIZE / 2.0) + ROAD_LENGTH};
+            case "C":
+                return new double[]{centerX + (JUNCTION_SIZE / 2.0) + ROAD_LENGTH, centerY + off};
+            case "D":
+                return new double[]{centerX - (JUNCTION_SIZE / 2.0) - ROAD_LENGTH, centerY + off};
+            default:
+                return new double[]{centerX, centerY};
+        }
+    }
+
+    private boolean isStraight(String src, String dst) {
+        return (src.equals("A") && dst.equals("B"))
+                || (src.equals("B") && dst.equals("A"))
+                || (src.equals("C") && dst.equals("D"))
+                || (src.equals("D") && dst.equals("C"));
+    }
+
+    private String randomIncomingRoad() {
+        String[] r = {"A", "B", "C", "D"};
+        return r[random.nextInt(r.length)];
+    }
+
+    private double laneOffset(String roadId, int laneNumber) {
+        double[] offsets = laneOffsetsByRoad.get(roadId);
+        if (offsets == null) offsets = new double[]{0, +LANE_WIDTH, 0, -LANE_WIDTH};
+        if (laneNumber < 1 || laneNumber > 3) return 0;
+        return offsets[laneNumber];
+    }
+
+
+    private Lane getLaneByRoad(String r) {
+        switch (r) {
+            case "A":
+                return laneA;
+            case "B":
+                return laneB;
+            case "C":
+                return laneC;
+            case "D":
+                return laneD;
+            default:
+                return laneA;
+        }
+    }
+
+    //Fixed Dequeue of car stopped in red light
+    private void dequeueFromLane(Lane lane, int laneNumber) {
+        if (lane == null) return;
+        switch (laneNumber) {
+            case 1:
+                lane.dequeueFromIncoming();
+                break;
+            case 2:
+                lane.dequeueFromPriority();
+                break;
+            case 3:
+                lane.dequeueFromLeftTurn();
+                break;
+            default:
+                break;
+        }
     }
 
     private Color getRandomCarColor() {
-        Color[] colors = {Color.BLUE, Color.RED, Color.GREEN, Color.ORANGE,
-                         Color.PURPLE, Color.YELLOW, Color.CYAN, Color.PINK};
+        Color[] colors = {Color.BLUE, Color.RED, Color.GREEN, Color.ORANGE, Color.PURPLE, Color.CYAN, Color.PINK};
         return colors[random.nextInt(colors.length)];
-
     }
 }
