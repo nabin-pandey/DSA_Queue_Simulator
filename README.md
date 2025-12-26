@@ -97,6 +97,20 @@ Each line follows:
 
 Only source lanes **2** and **3** are accepted as outgoing lanes (lane 1 is treated as accept/incoming).
 
+## Algorithm Used for Traffic Processing
+
+The traffic simulator uses the **Round Robin scheduling algorithm** to process vehicles from multiple lanes fairly.
+
+Steps:
+1. Initialize a queue for each lane.
+2. Assign a time slice (green signal duration) for each lane.
+3. Vehicles are dequeued from the current lane until the time slice ends.
+4. Move to the next lane in circular order.
+5. Repeat until all vehicles have passed.
+
+This ensures **fair distribution of signal time** among all lanes and prevents starvation of any lane.
+
+
 ### Core processing loop
 1. **Poll lane files** on a fixed interval and read only newly appended lines using file offsets.
 2. **Enqueue vehicles** into the appropriate in-memory lane and UI waiting list.
