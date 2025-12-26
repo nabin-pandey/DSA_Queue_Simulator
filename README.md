@@ -26,7 +26,7 @@ This project is a **4-way intersection traffic simulation** built using **Java +
 | Operation | Time Complexity | Explanation | Usage in Traffic Simulation |
 |----------|----------------|-------------|-----------------------------|
 | Enqueue  | O(1) | Insertion at the rear of the queue | Vehicle arrival at lane |
-| Dequeue  | O(1) | Removal from the front of the queue | Vehicle passes signal |
+| Dequeue  | O(n) | Removal from the front of the queue | Vehicle passes signal |
 | Peek    | O(1) | Access front element without removal | Check next vehicle |
 | isEmpty | O(1) | Checks if queue has elements | Signal decision logic |
 | Traverse | O(n) | Each element visited once | Debug / display |
@@ -199,7 +199,7 @@ java --module-path %PATH_TO_FX% --add-modules javafx.controls -cp target\\classe
 ## Demo (GIF / Video)
 Add your demo files in the repo and link them here:
 - **GIF:** `docs/demo.gif`
-- **Video:** <PASTE_VIDEO_LINK>
+- **Video:** ![Simulator] (low_timer_Recording 2025-12-26 234247.gif)
 
 Example embed:
 
