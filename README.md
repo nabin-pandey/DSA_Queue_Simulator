@@ -198,10 +198,8 @@ java --module-path %PATH_TO_FX% --add-modules javafx.controls -cp target\\classe
 
 ## Demo (GIF / Video)
 Add your demo files in the repo and link them here:
-- **GIF:** `docs/demo.gif`
-- **Video:** ![Simulator] (low_timer_Recording 2025-12-26 234247.gif)
+- **Video:** ![Demo GIF](low_timer_Recording_2025-12-26_234247.gif)
 
-Example embed:
 
 
 ---
