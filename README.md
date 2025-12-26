@@ -162,6 +162,12 @@ Repositioning a queue of size M is **O(M)** because each remaining vehicle must 
 
 ## How to Run (README Process)
 
+### Clone Repo
+```bash
+git clone https://github.com/nabin-pandey/DSA_Queue_Simulator
+```
+and then
+
 ### Option A — Run with Maven (recommended)
 If your `pom.xml` includes the OpenJFX dependencies and the `javafx-maven-plugin`, you can run the app with:
 
