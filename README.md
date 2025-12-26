@@ -166,12 +166,13 @@ Repositioning a queue of size M is **O(M)** because each remaining vehicle must 
 ```bash
 git clone https://github.com/nabin-pandey/DSA_Queue_Simulator
 ```
-and then
+and  run ###TrafficGeneratorProces.java after than
 
 ### Option A — Run with Maven (recommended)
-If your `pom.xml` includes the OpenJFX dependencies and the `javafx-maven-plugin`, you can run the app with:
-
+If  `pom.xml` includes the OpenJFX dependencies and the `javafx-maven-plugin`, you can run the app with:
 ```bash
+mvn clean javafx:run
+OR
 mvn clean javafx:run
 ```
 
