@@ -206,7 +206,15 @@ java --module-path %PATH_TO_FX% --add-modules javafx.controls -cp target\\classe
 ## Demo (GIF / Video)
 Add your demo files in the repo and link them here:
 Because of some issues playback video has been played from Google Drive.
-- **Video:** ![Demo GIF] https://drive.google.com/file/d/13bweX8KoTm0RSfD277WH3fGKjfqFbdbY/view?usp=sharing
+- **Video:** https://drive.google.com/file/d/13bweX8KoTm0RSfD277WH3fGKjfqFbdbY/view?usp=sharing
+  
+<details>
+  <summary><b>Demo Video (click to expand)</b></summary>
+
+  https://github.com/user-attachments/assets/c1ce22fb-b76d-4e5e-ad3f-59bd7fd851ae
+
+</details>
+
 
 
 
