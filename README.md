@@ -172,8 +172,8 @@ and  run ###TrafficGeneratorProces.java after than
 If  `pom.xml` includes the OpenJFX dependencies and the `javafx-maven-plugin`, you can run the app with:
 ```bash
 mvn clean javafx:run
-OR
-mvn clean javafx:run
+OR error is displayed run : 
+mvn clean javafx:run -X
 ```
 
 This approach downloads the required JavaFX modules automatically and launches the configured `mainClass`.
